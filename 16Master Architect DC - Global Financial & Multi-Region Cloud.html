@@ -1,0 +1,930 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Master Architect DC - Global Financial & Multi-Region Cloud</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+
+    <style>
+        :root {
+            --cisco-blue: #005073;
+            --cisco-light-blue: #0284c7;
+            --cisco-accent: #06b6d4;
+            --bg-light: #f8fafc;
+            --card-bg: #ffffff;
+            --text-dark: #0f172a;
+            --text-muted: #64748b;
+            --border-color: #e2e8f0;
+            --success-color: #10b981;
+            --danger-color: #ef4444;
+            --warning-color: #f59e0b;
+            --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+            --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.05);
+            --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.05);
+            --transition-smooth: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { background-color: var(--bg-light); color: var(--text-dark); font-family: 'Inter', sans-serif; padding: 24px 16px; line-height: 1.5; -webkit-font-smoothing: antialiased; }
+        
+        .container { 
+            max-width: 1440px; 
+            margin: 0 auto; 
+            background-color: var(--card-bg); 
+            border-radius: 16px; 
+            box-shadow: var(--shadow-lg); 
+            overflow: hidden; 
+            border: 1px solid var(--border-color);
+        }
+        
+        /* HEADER */
+        header { 
+            background: linear-gradient(135deg, #002b40 0%, var(--cisco-blue) 100%); 
+            color: #fff; 
+            padding: 24px 32px; 
+            display: flex; 
+            justify-content: space-between; 
+            align-items: center; 
+            border-bottom: 3px solid var(--cisco-accent);
+            flex-wrap: wrap;
+            gap: 20px;
+        }
+        .header-title { display: flex; align-items: center; gap: 16px; }
+        .header-title i { font-size: 28px; color: var(--cisco-accent); background: rgba(255,255,255,0.05); padding: 14px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.1); }
+        .header-title h1 { font-size: 20px; font-weight: 700; margin-bottom: 4px; letter-spacing: -0.02em; }
+        .header-title p { font-size: 13px; color: #cbd5e1; font-weight: 400; }
+
+        .score-box { 
+            background: rgba(15, 23, 42, 0.4); 
+            padding: 12px 24px; 
+            border-radius: 12px; 
+            border: 1px solid rgba(255,255,255,0.1); 
+            text-align: right; 
+            backdrop-filter: blur(8px);
+        }
+        .score-title { font-size: 11px; text-transform: uppercase; color: #94a3b8; font-weight: 700; letter-spacing: 0.05em; }
+        .score-value { font-size: 26px; font-weight: 700; color: var(--success-color); font-family: 'JetBrains Mono', monospace; margin-top: 2px; }
+
+        /* TOPOLOGY AREA */
+        .topology-section { padding: 0; background-color: #ffffff; border-bottom: 1px solid var(--border-color); }
+        .section-header { padding: 16px 32px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); background: #f8fafc; }
+        .section-header-title { font-weight: 600; color: var(--text-dark); font-size: 14px; display: flex; align-items: center; gap: 10px; }
+        .section-header-title i { color: var(--cisco-blue); font-size: 18px; }
+        
+        .topology-wrapper { width: 100%; overflow-x: auto; }
+        .topology-wrapper::-webkit-scrollbar { height: 8px; }
+        .topology-wrapper::-webkit-scrollbar-track { background: #f1f5f9; }
+        .topology-wrapper::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+
+        .topology-canvas { position: relative; height: 620px; min-width: 1280px; background-color: #f8fafc; background-image: radial-gradient(#cbd5e1 1px, transparent 1px); background-size: 28px 28px; overflow: hidden; }
+        .connections-svg { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 1; }
+        
+        /* CABLES */
+        .wired-line { stroke: #cbd5e1; stroke-width: 2; transition: stroke 0.4s ease, opacity 0.4s ease; stroke-linecap: round; }
+        .wired-line.active { stroke: var(--success-color); stroke-width: 3; }
+        .wired-line.vxlan { stroke: var(--cisco-accent); stroke-width: 5; stroke-dasharray: 8 4; animation: flowData 1s linear infinite; }
+        .wired-line.sdwan { stroke: #8b5cf6; stroke-width: 4; stroke-dasharray: 6 3; }
+        .wired-line.blocked { stroke: var(--warning-color); stroke-dasharray: 6 6; stroke-width: 2; }
+        .wired-line.offline { stroke: var(--danger-color); stroke-width: 2; opacity: 0.2; }
+        
+        @keyframes flowData { to { stroke-dashoffset: -24; } }
+
+        /* DEVICES */
+        .device-node { position: absolute; z-index: 2; display: flex; flex-direction: column; align-items: center; cursor: pointer; user-select: none; transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1); }
+        .device-node:hover { transform: translateY(-4px); }
+        .device-node:active { transform: scale(0.96); }
+        .device-node.offline { opacity: 0.4; filter: grayscale(100%); }
+        
+        .device-icon-box { width: 54px; height: 54px; background-color: #fff; border: 2px solid var(--border-color); border-radius: 12px; display: flex; justify-content: center; align-items: center; box-shadow: var(--shadow-sm); position: relative; transition: var(--transition-smooth); }
+        .device-icon-box i { font-size: 22px; color: var(--text-muted); transition: color 0.3s ease; }
+        .device-node:hover .device-icon-box { border-color: var(--cisco-light-blue); box-shadow: 0 8px 12px -3px rgba(2, 132, 199, 0.15); }
+        
+        .device-node.configured .device-icon-box { border-color: var(--cisco-blue); background: #f0f9ff; }
+        .device-node.configured .device-icon-box i { color: var(--cisco-blue); }
+        
+        .spine-node .device-icon-box { border-color: var(--cisco-accent); }
+        .leaf-node .device-icon-box { border-radius: 10px; }
+
+        .device-label { margin-top: 6px; font-size: 11px; font-weight: 600; background: rgba(255,255,255,0.95); padding: 4px 8px; border: 1px solid var(--border-color); border-radius: 6px; text-align: center; line-height: 1.3; box-shadow: var(--shadow-sm); backdrop-filter: blur(4px); white-space: nowrap; }
+        .device-ip { font-size: 10px; color: var(--text-muted); font-weight: 500; display: block; font-family: 'JetBrains Mono', monospace; }
+        
+        .status-badge { position: absolute; top: -6px; right: -6px; width: 20px; height: 20px; border-radius: 50%; background-color: var(--danger-color); border: 2px solid #fff; display: flex; align-items: center; justify-content: center; font-size: 10px; color: #fff; font-weight: bold; box-shadow: var(--shadow-sm); }
+        .status-badge.online { background-color: var(--success-color); }
+        .status-badge.standby { background-color: var(--warning-color); }
+
+        /* COORDINATES IN CANVAS (45 Devices Simplified Hierarchy) */
+        #cloud-node   { top: 4%; left: 50%; transform: translateX(-50%); }
+        
+        #fw1-node     { top: 16%; left: 38%; transform: translateX(-50%); }
+        #fw2-node     { top: 16%; left: 62%; transform: translateX(-50%); }
+
+        #hq1-node     { top: 30%; left: 38%; transform: translateX(-50%); }
+        #hq2-node     { top: 30%; left: 62%; transform: translateX(-50%); }
+        #sdwan-node   { top: 30%; left: 85%; transform: translateX(-50%); }
+
+        #spine1-node  { top: 46%; left: 20%; transform: translateX(-50%); }
+        #spine2-node  { top: 46%; left: 40%; transform: translateX(-50%); }
+        #spine3-node  { top: 46%; left: 60%; transform: translateX(-50%); }
+        #spine4-node  { top: 46%; left: 80%; transform: translateX(-50%); }
+
+        #leaf1-node   { top: 66%; left: 8%;  transform: translateX(-50%); }
+        #leaf2-node   { top: 66%; left: 20%; transform: translateX(-50%); }
+        #leaf3-node   { top: 66%; left: 32%; transform: translateX(-50%); }
+        #leaf4-node   { top: 66%; left: 44%; transform: translateX(-50%); }
+        #leaf5-node   { top: 66%; left: 56%; transform: translateX(-50%); }
+        #leaf6-node   { top: 66%; left: 68%; transform: translateX(-50%); }
+        #leaf7-node   { top: 66%; left: 80%; transform: translateX(-50%); }
+        #leaf8-node   { top: 66%; left: 92%; transform: translateX(-50%); }
+
+        #ep-web-node  { top: 85%; left: 8%;  transform: translateX(-50%); }
+        #ep-db-node   { top: 85%; left: 20%; transform: translateX(-50%); }
+        #ep-voip-node { top: 85%; left: 32%; transform: translateX(-50%); }
+        #ep-pos-node  { top: 85%; left: 44%; transform: translateX(-50%); }
+        #ep-wifi-node { top: 85%; left: 56%; transform: translateX(-50%); }
+        #ep-dmz-node  { top: 85%; left: 68%; transform: translateX(-50%); }
+        #ep-trade-node{ top: 85%; left: 80%; transform: translateX(-50%); }
+        #ep-nas-node  { top: 85%; left: 92%; transform: translateX(-50%); }
+
+        /* BOTTOM SECTION */
+        .lkpd-body { padding: 28px 32px; display: grid; grid-template-columns: 1.2fr 1fr; gap: 28px; background: #fff; }
+        .card { background: #fff; border: 1px solid var(--border-color); border-radius: 16px; padding: 24px; box-shadow: var(--shadow-sm); }
+        .card-title { font-size: 15px; font-weight: 700; color: var(--text-dark); margin-bottom: 20px; display: flex; align-items: center; gap: 10px; }
+        .card-title i { color: var(--cisco-blue); font-size: 18px; }
+        
+        /* CHECKLIST */
+        .checklist-group { display: flex; flex-direction: column; gap: 14px; }
+        .checklist-item { display: flex; flex-direction: column; background: #f8fafc; border: 1px solid var(--border-color); padding: 14px 16px; border-radius: 10px; transition: var(--transition-smooth); gap: 6px; cursor: pointer; }
+        .checklist-item:hover { border-color: var(--cisco-light-blue); background: #f0f9ff; }
+        .checklist-item.completed { background: #f0fdf4; border-color: #bbf7d0; }
+        
+        .item-header { display: flex; align-items: center; justify-content: space-between; }
+        .item-info { display: flex; align-items: center; gap: 12px; font-size: 13.5px; font-weight: 600; color: var(--text-dark); }
+        .item-info i { font-size: 18px; color: var(--text-muted); transition: 0.3s; }
+        .checklist-item.completed .item-info i { color: var(--success-color); }
+        .item-points { font-size: 11px; font-weight: 700; background: #e2e8f0; color: #475569; padding: 3px 10px; border-radius: 20px; }
+        .checklist-item.completed .item-points { background: #dcfce7; color: #15803d; }
+        .item-desc { font-size: 12px; color: var(--text-muted); margin-left: 30px; line-height: 1.5; }
+
+        /* TERMINAL */
+        .terminal-container { border-radius: 12px; overflow: hidden; box-shadow: var(--shadow-md); border: 1px solid #1e293b; background: #0f172a; }
+        .terminal-header { background: #1e293b; padding: 10px 16px; display: flex; align-items: center; gap: 8px; }
+        .terminal-dot { width: 10px; height: 10px; border-radius: 50%; }
+        .terminal-dot.red { background: #ef4444; }
+        .terminal-dot.yellow { background: #f59e0b; }
+        .terminal-dot.green { background: #10b981; }
+        .terminal-title { margin-left: auto; margin-right: auto; color: #94a3b8; font-size: 12px; font-weight: 500; font-family: 'JetBrains Mono', monospace; }
+        
+        .terminal-box { color: #e2e8f0; font-family: 'JetBrains Mono', monospace; font-size: 12px; padding: 16px; height: 260px; overflow-y: auto; line-height: 1.6; }
+        .terminal-box::-webkit-scrollbar { width: 6px; }
+        .terminal-box::-webkit-scrollbar-thumb { background: #334155; border-radius: 3px; }
+
+        .terminal-time { color: #64748b; margin-right: 6px; }
+        .terminal-success { color: #34d399; } 
+        .terminal-fail { color: #f87171; } 
+        .terminal-warn { color: #fbbf24; }
+        .terminal-sys { color: #38bdf8; }
+        
+        /* BUTTONS */
+        .action-controls { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 16px; }
+        button { padding: 10px 16px; font-size: 13px; border-radius: 8px; font-weight: 600; cursor: pointer; transition: var(--transition-smooth); display: flex; align-items: center; justify-content: center; gap: 8px; font-family: 'Inter', sans-serif; outline: none; border: 1px solid transparent; }
+        button:active { transform: scale(0.98); }
+        
+        .btn-cisco { background: var(--cisco-blue); color: #fff; }
+        .btn-cisco:hover { background: #003b54; }
+        .btn-secondary { background: #fff; color: var(--text-dark); border-color: var(--border-color); }
+        .btn-secondary:hover { background: #f8fafc; border-color: #cbd5e1; }
+        .btn-danger { background: var(--danger-color); color: #fff; }
+        .btn-danger:hover { background: #dc2626; }
+        .btn-warn { background: var(--warning-color); color: #fff; }
+        .btn-warn:hover { background: #d97706; }
+
+        /* MODALS */
+        .modal-overlay { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(15,23,42,0.6); backdrop-filter: blur(6px); display: flex; justify-content: center; align-items: center; opacity: 0; pointer-events: none; transition: opacity 0.3s ease; z-index: 100; padding: 16px; }
+        .modal-overlay.active { opacity: 1; pointer-events: auto; }
+        .modal-overlay.active .cisco-modal { transform: scale(1) translateY(0); opacity: 1; }
+        
+        .cisco-modal { background: #fff; width: 100%; max-width: 520px; border-radius: 16px; overflow: hidden; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.3); transform: scale(0.95) translateY(10px); opacity: 0; transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1); }
+        .modal-header { background: #002b40; color: #fff; padding: 18px 24px; display: flex; justify-content: space-between; align-items: center; border-bottom: 3px solid var(--cisco-accent); }
+        .modal-header h3 { font-size: 15px; font-weight: 600; display: flex; align-items: center; gap: 10px; }
+        .modal-close { background: none; border: none; color: rgba(255,255,255,0.7); cursor: pointer; font-size: 22px; line-height: 1; padding: 4px; }
+        .modal-close:hover { color: #fff; }
+        
+        .modal-body { padding: 20px 24px; max-height: 70vh; overflow-y: auto; }
+        .form-grid { display: flex; flex-direction: column; gap: 8px; margin-bottom: 16px; }
+        .form-grid label { font-size: 12.5px; font-weight: 600; color: var(--text-dark); }
+        .form-grid input, .form-grid select { padding: 10px 14px; border: 1px solid var(--border-color); border-radius: 8px; font-size: 13.5px; font-family: inherit; transition: var(--transition-smooth); background: #f8fafc; color: var(--text-dark); width: 100%; }
+        .form-grid input:focus, .form-grid select:focus { outline: none; border-color: var(--cisco-light-blue); background: #fff; box-shadow: 0 0 0 3px rgba(2, 132, 199, 0.1); }
+        
+        .modal-footer { padding: 16px 24px; background: #f8fafc; display: flex; justify-content: flex-end; gap: 10px; border-top: 1px solid var(--border-color); }
+        .badge-info { font-size: 12px; background: #f0f9ff; color: #0369a1; padding: 12px 14px; border-radius: 8px; margin-bottom: 16px; line-height: 1.5; border-left: 4px solid #0284c7; }
+
+        @media (max-width: 1024px) {
+            .lkpd-body { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <header>
+        <div class="header-title">
+            <i class="fa-solid fa-network-wired"></i>
+            <div>
+                <h1>Global Financial Data Center & Multi-Region Cloud Backbone</h1>
+                <p>Simulasi Skenario Architect Level (45 Perangkat / 240 Menit) - Spine-Leaf, VXLAN EVPN, SD-WAN & Zero Trust</p>
+            </div>
+        </div>
+        <div class="score-box">
+            <div class="score-title">Nilai Praktikum</div>
+            <div class="score-value" id="total-score">0 / 100</div>
+        </div>
+    </header>
+
+    <div class="topology-section">
+        <div class="section-header">
+            <span class="section-header-title"><i class="fa-solid fa-sitemap"></i> Topologi Data Center & Cloud Interconnect (Klik Perangkat untuk Konfigurasi)</span>
+            <button class="btn-secondary" style="font-size: 12px; padding: 6px 14px;" onclick="resetLabState()">
+                <i class="fa-solid fa-rotate-right"></i> Reset Topologi
+            </button>
+        </div>
+        
+        <div class="topology-wrapper">
+            <div class="topology-canvas" id="canvas-area">
+                <svg class="connections-svg" id="svg-connections"></svg>
+
+                <!-- Internet & Cloud -->
+                <div class="device-node" id="cloud-node">
+                    <div class="device-icon-box"><i class="fa-solid fa-cloud"></i></div>
+                    <div class="device-label">Global Cloud WAN<br><span class="device-ip">AS 65000</span></div>
+                </div>
+
+                <!-- Edge Firewalls Cluster -->
+                <div class="device-node" id="fw1-node" onclick="openModal('mod-security')">
+                    <div class="device-icon-box"><i class="fa-solid fa-shield-halved"></i><div class="status-badge" id="badge-fw1">!</div></div>
+                    <div class="device-label">Edge ASA-1 (Active)<br><span class="device-ip">198.51.100.1</span></div>
+                </div>
+                <div class="device-node" id="fw2-node" onclick="openModal('mod-security')">
+                    <div class="device-icon-box"><i class="fa-solid fa-shield-halved"></i><div class="status-badge" id="badge-fw2">!</div></div>
+                    <div class="device-label">Edge ASA-2 (Standby)<br><span class="device-ip">198.51.100.2</span></div>
+                </div>
+
+                <!-- Core Routers & SD-WAN -->
+                <div class="device-node" id="hq1-node" onclick="openModal('mod-sdwan')">
+                    <div class="device-icon-box"><i class="fa-solid fa-server"></i><div class="status-badge" id="badge-hq1">!</div></div>
+                    <div class="device-label">Core Router HQ-1<br><span class="device-ip">10.0.0.1</span></div>
+                </div>
+                <div class="device-node" id="hq2-node" onclick="openModal('mod-sdwan')">
+                    <div class="device-icon-box"><i class="fa-solid fa-server"></i><div class="status-badge" id="badge-hq2">!</div></div>
+                    <div class="device-label">Core Router HQ-2<br><span class="device-ip">10.0.0.2</span></div>
+                </div>
+                <div class="device-node" id="sdwan-node" onclick="openModal('mod-sdwan')">
+                    <div class="device-icon-box"><i class="fa-solid fa-route"></i><div class="status-badge" id="badge-sdwan">!</div></div>
+                    <div class="device-label">SD-WAN Branch Controller<br><span class="device-ip">10.254.0.1</span></div>
+                </div>
+
+                <!-- Spine Switches (Spine 1 - 4) -->
+                <div class="device-node spine-node" id="spine1-node" onclick="openModal('mod-fabric')">
+                    <div class="device-icon-box"><i class="fa-solid fa-cubes"></i><div class="status-badge" id="badge-spine1">!</div></div>
+                    <div class="device-label">Spine SW-1<br><span class="device-ip">10.100.0.1</span></div>
+                </div>
+                <div class="device-node spine-node" id="spine2-node" onclick="openModal('mod-fabric')">
+                    <div class="device-icon-box"><i class="fa-solid fa-cubes"></i><div class="status-badge" id="badge-spine2">!</div></div>
+                    <div class="device-label">Spine SW-2<br><span class="device-ip">10.100.0.2</span></div>
+                </div>
+                <div class="device-node spine-node" id="spine3-node" onclick="openModal('mod-fabric')">
+                    <div class="device-icon-box"><i class="fa-solid fa-cubes"></i><div class="status-badge" id="badge-spine3">!</div></div>
+                    <div class="device-label">Spine SW-3<br><span class="device-ip">10.100.0.3</span></div>
+                </div>
+                <div class="device-node spine-node" id="spine4-node" onclick="openModal('mod-fabric')">
+                    <div class="device-icon-box"><i class="fa-solid fa-cubes"></i><div class="status-badge" id="badge-spine4">!</div></div>
+                    <div class="device-label">Spine SW-4<br><span class="device-ip">10.100.0.4</span></div>
+                </div>
+
+                <!-- Leaf Switches (Leaf 1 - 8) -->
+                <div class="device-node leaf-node" id="leaf1-node" onclick="openModal('mod-fabric')">
+                    <div class="device-icon-box"><i class="fa-solid fa-layer-group"></i><div class="status-badge" id="badge-leaf1">!</div></div>
+                    <div class="device-label">Leaf-1 (Web)<br><span class="device-ip">VNI 10001</span></div>
+                </div>
+                <div class="device-node leaf-node" id="leaf2-node" onclick="openModal('mod-security')">
+                    <div class="device-icon-box"><i class="fa-solid fa-layer-group"></i><div class="status-badge" id="badge-leaf2">!</div></div>
+                    <div class="device-label">Leaf-2 (DB)<br><span class="device-ip">VNI 10002</span></div>
+                </div>
+                <div class="device-node leaf-node" id="leaf3-node" onclick="openModal('mod-voip')">
+                    <div class="device-icon-box"><i class="fa-solid fa-layer-group"></i><div class="status-badge" id="badge-leaf3">!</div></div>
+                    <div class="device-label">Leaf-3 (VoIP)<br><span class="device-ip">VLAN 150</span></div>
+                </div>
+                <div class="device-node leaf-node" id="leaf4-node" onclick="openModal('mod-fabric')">
+                    <div class="device-icon-box"><i class="fa-solid fa-layer-group"></i><div class="status-badge" id="badge-leaf4">!</div></div>
+                    <div class="device-label">Leaf-4 (POS)<br><span class="device-ip">VLAN 200</span></div>
+                </div>
+                <div class="device-node leaf-node" id="leaf5-node" onclick="openModal('mod-security')">
+                    <div class="device-icon-box"><i class="fa-solid fa-layer-group"></i><div class="status-badge" id="badge-leaf5">!</div></div>
+                    <div class="device-label">Leaf-5 (WiFi/802.1x)<br><span class="device-ip">Dot1x / WLC</span></div>
+                </div>
+                <div class="device-node leaf-node" id="leaf6-node" onclick="openModal('mod-security')">
+                    <div class="device-icon-box"><i class="fa-solid fa-layer-group"></i><div class="status-badge" id="badge-leaf6">!</div></div>
+                    <div class="device-label">Leaf-6 (DMZ/WAF)<br><span class="device-ip">WAF Inline</span></div>
+                </div>
+                <div class="device-node leaf-node" id="leaf7-node" onclick="openModal('mod-sdwan')">
+                    <div class="device-icon-box"><i class="fa-solid fa-layer-group"></i><div class="status-badge" id="badge-leaf7">!</div></div>
+                    <div class="device-label">Leaf-7 (HFT Trading)<br><span class="device-ip">&lt; 10ms Latency</span></div>
+                </div>
+                <div class="device-node leaf-node" id="leaf8-node" onclick="openModal('mod-voip')">
+                    <div class="device-icon-box"><i class="fa-solid fa-layer-group"></i><div class="status-badge" id="badge-leaf8">!</div></div>
+                    <div class="device-label">Leaf-8 (Storage)<br><span class="device-ip">MTU 9000</span></div>
+                </div>
+
+                <!-- Endpoint Groups / Servers -->
+                <div class="device-node" id="ep-web-node">
+                    <div class="device-icon-box"><i class="fa-solid fa-globe"></i></div>
+                    <div class="device-label">Web Cluster (2 Node)</div>
+                </div>
+                <div class="device-node" id="ep-db-node">
+                    <div class="device-icon-box"><i class="fa-solid fa-database"></i></div>
+                    <div class="device-label">DB Cluster (2 Node)</div>
+                </div>
+                <div class="device-node" id="ep-voip-node">
+                    <div class="device-icon-box"><i class="fa-solid fa-phone-volume"></i></div>
+                    <div class="device-label">CME VoIP Phone (2001-2010)</div>
+                </div>
+                <div class="device-node" id="ep-pos-node">
+                    <div class="device-icon-box"><i class="fa-solid fa-credit-card"></i></div>
+                    <div class="device-label">Branch POS Terminal</div>
+                </div>
+                <div class="device-node" id="ep-wifi-node">
+                    <div class="device-icon-box"><i class="fa-solid fa-wifi"></i></div>
+                    <div class="device-label">WLC & RADIUS Server</div>
+                </div>
+                <div class="device-node" id="ep-dmz-node">
+                    <div class="device-icon-box"><i class="fa-solid fa-lock"></i></div>
+                    <div class="device-label">WAF Web Banking DMZ</div>
+                </div>
+                <div class="device-node" id="ep-trade-node">
+                    <div class="device-icon-box"><i class="fa-solid fa-chart-line"></i></div>
+                    <div class="device-label">HFT Trading Workstation</div>
+                </div>
+                <div class="device-node" id="ep-nas-node">
+                    <div class="device-icon-box"><i class="fa-solid fa-hard-drive"></i></div>
+                    <div class="device-label">iSCSI NAS Storage</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="lkpd-body">
+        <div class="card">
+            <div class="card-title"><i class="fa-solid fa-tasks"></i> 5 Modul Skenario Interaktif (Total 100 Point)</div>
+            <div class="checklist-group">
+                <div class="checklist-item" id="chk-mod1" onclick="openModal('mod-fabric')">
+                    <div class="item-header">
+                        <div class="item-info"><i class="fa-regular fa-circle-check" id="icon-mod1"></i><span>1. High-Speed Spine-Leaf Architecture & VXLAN EVPN</span></div>
+                        <span class="item-points">25 Point</span>
+                    </div>
+                    <div class="item-desc">Full Spine-Leaf Mesh (tanpa link inter-spine/leaf). BGP/OSPF underlay & Overlay VXLAN EVPN VNI 10001-10002 aktif.</div>
+                </div>
+
+                <div class="checklist-item" id="chk-mod2" onclick="openModal('mod-sdwan')">
+                    <div class="item-header">
+                        <div class="item-info"><i class="fa-regular fa-circle-check" id="icon-mod2"></i><span>2. Multi-Region SD-WAN & Dynamic Path (PfR)</span></div>
+                        <span class="item-points">20 Point</span>
+                    </div>
+                    <div class="item-desc">SD-WAN Overlay Tunneling ter-enkripsi. PfR: HFT Trading via Leased Line (&lt;10ms), Backup/CCTV via Internet.</div>
+                </div>
+
+                <div class="checklist-item" id="chk-mod3" onclick="openModal('mod-security')">
+                    <div class="item-header">
+                        <div class="item-info"><i class="fa-regular fa-circle-check" id="icon-mod3"></i><span>3. Zero-Trust Security, WAF & Micro-Segmentation</span></div>
+                        <span class="item-points">25 Point</span>
+                    </div>
+                    <div class="item-desc">Micro-segmentation: Isolasi DB (Leaf-2) hanya dari Web (Leaf-1). WAF filter SQLi/XSS aktif. RADIUS Dot1x aktif di HQ.</div>
+                </div>
+
+                <div class="checklist-item" id="chk-mod4" onclick="openModal('mod-voip')">
+                    <div class="item-header">
+                        <div class="item-info"><i class="fa-regular fa-circle-check" id="icon-mod4"></i><span>4. Enterprise Unified CME VoIP & Storage Cluster</span></div>
+                        <span class="item-points">15 Point</span>
+                    </div>
+                    <div class="item-desc">Cisco CME registrasi IP Phone 2001-2010 di Voice VLAN 150 (QoS CoS=5). Storage NAS Leaf-8 aktif MTU 9000 (Jumbo Frames).</div>
+                </div>
+
+                <div class="checklist-item" id="chk-mod5" onclick="openModal('mod-dr')">
+                    <div class="item-header">
+                        <div class="item-info"><i class="fa-regular fa-circle-check" id="icon-mod5"></i><span>5. Disaster Recovery Failover & Anti-DDoS Mitigation</span></div>
+                        <span class="item-points">15 Point</span>
+                    </div>
+                    <div class="item-desc">Simulasi Stateful Failover ASA/Spine-1 (&lt;5 detik) serta pencegahan banjir SYN/ICMP menggunakan uRPF & Storm Control.</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-title"><i class="fa-solid fa-terminal"></i> Terminal Diagnostic & Audit Log</div>
+            
+            <div class="terminal-container">
+                <div class="terminal-header">
+                    <div class="terminal-dot red"></div>
+                    <div class="terminal-dot yellow"></div>
+                    <div class="terminal-dot green"></div>
+                    <div class="terminal-title">DC-CORE-CONSOLE#</div>
+                </div>
+                <div class="terminal-box" id="terminal-output">
+                    <!-- Dynamic logs -->
+                </div>
+            </div>
+
+            <div class="action-controls">
+                <button class="btn-cisco" onclick="runTrafficAudit()"><i class="fa-solid fa-magnifying-glass"></i> Audit Traffic & Latency</button>
+                <button class="btn-danger" id="btn-dr-test" onclick="triggerDoubleFailure()"><i class="fa-solid fa-dumpster-fire"></i> Test Failover Ganda</button>
+                <button class="btn-warn" id="btn-ddos-test" onclick="triggerDDoSAttack()"><i class="fa-solid fa-bug"></i> Simulasi Serangan DDoS</button>
+                <button class="btn-secondary" onclick="showVXLANStatus()"><i class="fa-solid fa-code"></i> Check `show vxlan`</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- MODAL MODUL 1: FABRIC VXLAN -->
+<div class="modal-overlay" id="mod-fabric">
+    <div class="cisco-modal">
+        <div class="modal-header">
+            <h3><i class="fa-solid fa-cubes"></i> Modul 1: Fabric Spine-Leaf & VXLAN EVPN</h3>
+            <button class="modal-close" onclick="closeModal('mod-fabric')">&times;</button>
+        </div>
+        <div class="modal-body">
+            <div class="badge-info">Konfigurasi non-blocking Data Center Fabric berkecepatan tinggi dengan Underlay Routing dan Overlay VXLAN EVPN.</div>
+            <div class="form-grid">
+                <label for="cfg-underlay">Underlay Routing Protocol (Spine-Leaf Mesh)</label>
+                <select id="cfg-underlay">
+                    <option value="none">Disabled</option>
+                    <option value="ospf">OSPF Multi-Area (Area 0 Core)</option>
+                    <option value="bgp">eBGP Underlay (Recommended for EVPN)</option>
+                </select>
+            </div>
+            <div class="form-grid">
+                <label for="cfg-vxlan">VXLAN EVPN Overlay Network</label>
+                <select id="cfg-vxlan">
+                    <option value="disabled">Disabled</option>
+                    <option value="enabled">Enabled (VNI 10001: Web, VNI 10002: DB)</option>
+                </select>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn-secondary" onclick="closeModal('mod-fabric')">Batal</button>
+            <button class="btn-cisco" onclick="saveFabricConfig()">Simpan Konfigurasi</button>
+        </div>
+    </div>
+</div>
+
+<!-- MODAL MODUL 2: SD-WAN -->
+<div class="modal-overlay" id="mod-sdwan">
+    <div class="cisco-modal">
+        <div class="modal-header">
+            <h3><i class="fa-solid fa-route"></i> Modul 2: Multi-Region SD-WAN & PfR</h3>
+            <button class="modal-close" onclick="closeModal('mod-sdwan')">&times;</button>
+        </div>
+        <div class="modal-body">
+            <div class="badge-info">Konfigurasi Enkripsi IPsec Overlay Tunnel & Performance-Based Routing (PfR) untuk alokasi bandwidth cabang.</div>
+            <div class="form-grid">
+                <label for="cfg-sdwan-tunnel">SD-WAN Overlay Tunneling</label>
+                <select id="cfg-sdwan-tunnel">
+                    <option value="disabled">Disabled</option>
+                    <option value="enabled">Active (IPsec AES-256 Encrypted Tunnel)</option>
+                </select>
+            </div>
+            <div class="form-grid">
+                <label for="cfg-pfr">Performance-Based Routing (PfR Policy)</label>
+                <select id="cfg-pfr">
+                    <option value="disabled">Default Routing Only</option>
+                    <option value="enabled">PfR Active: HFT Latency &lt; 10ms (Leased Line), Backup (Internet)</option>
+                </select>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn-secondary" onclick="closeModal('mod-sdwan')">Batal</button>
+            <button class="btn-cisco" onclick="saveSDWANConfig()">Simpan Konfigurasi</button>
+        </div>
+    </div>
+</div>
+
+<!-- MODAL MODUL 3: ZERO TRUST SECURITY -->
+<div class="modal-overlay" id="mod-security">
+    <div class="cisco-modal">
+        <div class="modal-header">
+            <h3><i class="fa-solid fa-shield-halved"></i> Modul 3: Zero-Trust Security & WAF</h3>
+            <button class="modal-close" onclick="closeModal('mod-security')">&times;</button>
+        </div>
+        <div class="modal-body">
+            <div class="badge-info">Proteksi aset finansial dari ancaman internal/eksternal melalui Micro-Segmentation, WAF, dan Dot1x.</div>
+            <div class="form-grid">
+                <label for="cfg-microseg">DB Micro-Segmentation (Leaf-2)</label>
+                <select id="cfg-microseg">
+                    <option value="disabled">Disabled (Any-to-Any Access)</option>
+                    <option value="enabled">Strict Access: Direct DB Access Allowed ONLY from Web Cluster (Leaf-1)</option>
+                </select>
+            </div>
+            <div class="form-grid">
+                <label for="cfg-waf">Web Application Firewall (WAF DMZ)</label>
+                <select id="cfg-waf">
+                    <option value="disabled">Bypass Filter</option>
+                    <option value="enabled">Active Filter: Inspect & Block SQL Injection & XSS Exploits</option>
+                </select>
+            </div>
+            <div class="form-grid">
+                <label for="cfg-dot1x">802.1x RADIUS Authentication</label>
+                <select id="cfg-dot1x">
+                    <option value="disabled">Disabled</option>
+                    <option value="enabled">Enabled (EAP-TLS Staff Device Validation)</option>
+                </select>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn-secondary" onclick="closeModal('mod-security')">Batal</button>
+            <button class="btn-cisco" onclick="saveSecurityConfig()">Simpan Konfigurasi</button>
+        </div>
+    </div>
+</div>
+
+<!-- MODAL MODUL 4: VOIP & STORAGE -->
+<div class="modal-overlay" id="mod-voip">
+    <div class="cisco-modal">
+        <div class="modal-header">
+            <h3><i class="fa-solid fa-phone-volume"></i> Modul 4: CME VoIP & NAS Storage</h3>
+            <button class="modal-close" onclick="closeModal('mod-voip')">&times;</button>
+        </div>
+        <div class="modal-body">
+            <div class="badge-info">Integrasi jaringan telepon digital Cisco Unified CME dan performa iSCSI Storage Backup.</div>
+            <div class="form-grid">
+                <label for="cfg-voip">Cisco CME Voice VLAN & QoS Tagging</label>
+                <select id="cfg-voip">
+                    <option value="disabled">VLAN Default (No QoS)</option>
+                    <option value="enabled">Voice VLAN 150 Active (CoS / QoS Tagging = 5, Ext 2001-2010)</option>
+                </select>
+            </div>
+            <div class="form-grid">
+                <label for="cfg-storage-mtu">Leaf-8 Storage Interface MTU Size</label>
+                <select id="cfg-storage-mtu">
+                    <option value="1500">MTU 1500 (Standard Frame)</option>
+                    <option value="9000">MTU 9000 (Jumbo Frame Active for NAS Backup)</option>
+                </select>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn-secondary" onclick="closeModal('mod-voip')">Batal</button>
+            <button class="btn-cisco" onclick="saveVoIPStorageConfig()">Simpan Konfigurasi</button>
+        </div>
+    </div>
+</div>
+
+<!-- MODAL MODUL 5: DR & FAILOVER -->
+<div class="modal-overlay" id="mod-dr">
+    <div class="cisco-modal">
+        <div class="modal-header">
+            <h3><i class="fa-solid fa-fire-extinguisher"></i> Modul 5: Disaster Recovery & Defense</h3>
+            <button class="modal-close" onclick="closeModal('mod-dr')">&times;</button>
+        </div>
+        <div class="modal-body">
+            <div class="badge-info">Konfigurasi Stateful Failover Cluster ASA dan proteksi Unicast Reverse Path Forwarding (uRPF) & Storm Control.</div>
+            <div class="form-grid">
+                <label for="cfg-failover">ASA Stateful Failover Cluster</label>
+                <select id="cfg-failover">
+                    <option value="disabled">Disabled</option>
+                    <option value="enabled">Active/Standby Cluster (Sync State &lt; 5s Failover)</option>
+                </select>
+            </div>
+            <div class="form-grid">
+                <label for="cfg-storm">uRPF & Traffic Rate Limiting / Storm Control</label>
+                <select id="cfg-storm">
+                    <option value="disabled">Disabled</option>
+                    <option value="enabled">Enabled on All Leaf Access Ports</option>
+                </select>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn-secondary" onclick="closeModal('mod-dr')">Batal</button>
+            <button class="btn-cisco" onclick="saveDRConfig()">Simpan Konfigurasi</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    // State Database
+    let state = {
+        fabric: { underlay: 'none', vxlan: 'disabled' },
+        sdwan: { tunnel: 'disabled', pfr: 'disabled' },
+        security: { microseg: 'disabled', waf: 'disabled', dot1x: 'disabled' },
+        voip_storage: { voip: 'disabled', mtu: '1500' },
+        dr_defense: { failover: 'disabled', storm: 'disabled', asa1_power: true, spine1_power: true }
+    };
+
+    function openModal(modalId) {
+        document.getElementById(modalId).classList.add('active');
+    }
+
+    function closeModal(modalId) {
+        document.getElementById(modalId).classList.remove('active');
+    }
+
+    function getTimestamp() {
+        return new Date().toLocaleTimeString('id-ID', { hour12: false });
+    }
+
+    function logTerminal(msg, cls="") {
+        const box = document.getElementById('terminal-output');
+        const time = getTimestamp();
+        box.innerHTML += `<div class="${cls}"><span class="terminal-time">[${time}]</span> ${msg}</div>`;
+        box.scrollTop = box.scrollHeight;
+    }
+
+    // Modal Saver Handlers
+    function saveFabricConfig() {
+        state.fabric.underlay = document.getElementById('cfg-underlay').value;
+        state.fabric.vxlan = document.getElementById('cfg-vxlan').value;
+        logTerminal(`[FABRIC] Underlay: ${state.fabric.underlay.toUpperCase()}, VXLAN Overlay: ${state.fabric.vxlan.toUpperCase()}`, 'terminal-sys');
+        closeModal('mod-fabric');
+        evaluateSystem();
+    }
+
+    function saveSDWANConfig() {
+        state.sdwan.tunnel = document.getElementById('cfg-sdwan-tunnel').value;
+        state.sdwan.pfr = document.getElementById('cfg-pfr').value;
+        logTerminal(`[SD-WAN] Tunnel: ${state.sdwan.tunnel.toUpperCase()}, PfR Policy: ${state.sdwan.pfr.toUpperCase()}`, 'terminal-sys');
+        closeModal('mod-sdwan');
+        evaluateSystem();
+    }
+
+    function saveSecurityConfig() {
+        state.security.microseg = document.getElementById('cfg-microseg').value;
+        state.security.waf = document.getElementById('cfg-waf').value;
+        state.security.dot1x = document.getElementById('cfg-dot1x').value;
+        logTerminal(`[ZERO-TRUST] MicroSeg: ${state.security.microseg.toUpperCase()}, WAF: ${state.security.waf.toUpperCase()}, 802.1x: ${state.security.dot1x.toUpperCase()}`, 'terminal-sys');
+        closeModal('mod-security');
+        evaluateSystem();
+    }
+
+    function saveVoIPStorageConfig() {
+        state.voip_storage.voip = document.getElementById('cfg-voip').value;
+        state.voip_storage.mtu = document.getElementById('cfg-storage-mtu').value;
+        logTerminal(`[VOIP/STORAGE] Voice VLAN 150: ${state.voip_storage.voip.toUpperCase()}, Storage Leaf-8 MTU: ${state.voip_storage.mtu}`, 'terminal-sys');
+        closeModal('mod-voip');
+        evaluateSystem();
+    }
+
+    function saveDRConfig() {
+        state.dr_defense.failover = document.getElementById('cfg-failover').value;
+        state.dr_defense.storm = document.getElementById('cfg-storm').value;
+        logTerminal(`[DR/DEFENSE] Stateful Failover: ${state.dr_defense.failover.toUpperCase()}, uRPF & Storm Control: ${state.dr_defense.storm.toUpperCase()}`, 'terminal-sys');
+        closeModal('mod-dr');
+        evaluateSystem();
+    }
+
+    // SVG Drawing Helper
+    function getLineHtml(id1, id2, statusClass) {
+        const e1 = document.getElementById(id1).getBoundingClientRect();
+        const e2 = document.getElementById(id2).getBoundingClientRect();
+        const cvs = document.getElementById('canvas-area').getBoundingClientRect();
+        const x1 = e1.left - cvs.left + e1.width/2;
+        const y1 = e1.top - cvs.top + e1.height/2;
+        const x2 = e2.left - cvs.left + e2.width/2;
+        const y2 = e2.top - cvs.top + e2.height/2;
+        return `<line class="wired-line ${statusClass}" x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" />`;
+    }
+
+    // Evaluation Engine
+    function evaluateSystem() {
+        let score = 0;
+
+        // Modul 1 (25 Poin)
+        let mod1Ok = (state.fabric.underlay === 'bgp' && state.fabric.vxlan === 'enabled');
+        if(mod1Ok) score += 25;
+        updateChecklistItem('mod1', mod1Ok);
+
+        // Modul 2 (20 Poin)
+        let mod2Ok = (state.sdwan.tunnel === 'enabled' && state.sdwan.pfr === 'enabled');
+        if(mod2Ok) score += 20;
+        updateChecklistItem('mod2', mod2Ok);
+
+        // Modul 3 (25 Poin)
+        let mod3Ok = (state.security.microseg === 'enabled' && state.security.waf === 'enabled' && state.security.dot1x === 'enabled');
+        if(mod3Ok) score += 25;
+        updateChecklistItem('mod3', mod3Ok);
+
+        // Modul 4 (15 Poin)
+        let mod4Ok = (state.voip_storage.voip === 'enabled' && state.voip_storage.mtu === '9000');
+        if(mod4Ok) score += 15;
+        updateChecklistItem('mod4', mod4Ok);
+
+        // Modul 5 (15 Poin)
+        let mod5Ok = (state.dr_defense.failover === 'enabled' && state.dr_defense.storm === 'enabled');
+        if(mod5Ok) score += 15;
+        updateChecklistItem('mod5', mod5Ok);
+
+        document.getElementById('total-score').innerText = `${score} / 100`;
+
+        // Update Badges & Canvas
+        updateDeviceBadges(mod1Ok, mod2Ok, mod3Ok, mod4Ok, mod5Ok);
+        renderCanvasConnections();
+    }
+
+    function updateChecklistItem(key, isDone) {
+        const el = document.getElementById(`chk-${key}`);
+        const ic = document.getElementById(`icon-${key}`);
+        if(isDone) {
+            el.classList.add('completed');
+            ic.className = 'fa-solid fa-circle-check';
+        } else {
+            el.classList.remove('completed');
+            ic.className = 'fa-regular fa-circle-check';
+        }
+    }
+
+    function updateDeviceBadges(m1, m2, m3, m4, m5) {
+        setNodeStatus('spine1', m1 && state.dr_defense.spine1_power);
+        setNodeStatus('spine2', m1);
+        setNodeStatus('spine3', m1);
+        setNodeStatus('spine4', m1);
+
+        setNodeStatus('leaf1', m1);
+        setNodeStatus('leaf2', m1 && m3);
+        setNodeStatus('leaf3', m1 && m4);
+        setNodeStatus('leaf4', m1);
+        setNodeStatus('leaf5', m1 && m3);
+        setNodeStatus('leaf6', m1 && m3);
+        setNodeStatus('leaf7', m1 && m2);
+        setNodeStatus('leaf8', m1 && m4);
+
+        setNodeStatus('fw1', state.dr_defense.asa1_power);
+        setNodeStatus('fw2', state.dr_defense.failover === 'enabled');
+        setNodeStatus('hq1', m2);
+        setNodeStatus('hq2', m2);
+        setNodeStatus('sdwan', m2);
+    }
+
+    function setNodeStatus(prefix, isOk) {
+        const node = document.getElementById(`${prefix}-node`);
+        const badge = document.getElementById(`badge-${prefix}`);
+        if(isOk) {
+            node.classList.add('configured');
+            node.classList.remove('offline');
+            badge.className = 'status-badge online';
+            badge.innerHTML = '<i class="fa-solid fa-check"></i>';
+        } else {
+            node.classList.remove('configured');
+            if(prefix === 'spine1' && !state.dr_defense.spine1_power) node.classList.add('offline');
+            if(prefix === 'fw1' && !state.dr_defense.asa1_power) node.classList.add('offline');
+            badge.className = 'status-badge';
+            badge.innerHTML = '!';
+        }
+    }
+
+    function renderCanvasConnections() {
+        let svg = '';
+        const isVxlan = (state.fabric.vxlan === 'enabled');
+        const isSdwan = (state.sdwan.tunnel === 'enabled');
+
+        // Cloud & Firewall
+        svg += getLineHtml('cloud-node', 'fw1-node', state.dr_defense.asa1_power ? 'active' : 'offline');
+        svg += getLineHtml('cloud-node', 'fw2-node', 'active');
+        svg += getLineHtml('fw1-node', 'hq1-node', state.dr_defense.asa1_power ? 'active' : 'offline');
+        svg += getLineHtml('fw2-node', 'hq2-node', 'active');
+
+        // Core to Spine Links
+        const spines = ['spine1-node', 'spine2-node', 'spine3-node', 'spine4-node'];
+        spines.forEach((sp, idx) => {
+            let activeState = (idx === 0 && !state.dr_defense.spine1_power) ? 'offline' : 'active';
+            svg += getLineHtml('hq1-node', sp, activeState);
+            svg += getLineHtml('hq2-node', sp, activeState);
+        });
+
+        // SD-WAN Link
+        svg += getLineHtml('hq2-node', 'sdwan-node', isSdwan ? 'sdwan' : 'active');
+
+        // Spine-Leaf Full Mesh Lines
+        const leaves = ['leaf1-node', 'leaf2-node', 'leaf3-node', 'leaf4-node', 'leaf5-node', 'leaf6-node', 'leaf7-node', 'leaf8-node'];
+        spines.forEach((sp, sIdx) => {
+            leaves.forEach(lf => {
+                let st = isVxlan ? 'vxlan' : 'active';
+                if(sIdx === 0 && !state.dr_defense.spine1_power) st = 'offline';
+                svg += getLineHtml(sp, lf, st);
+            });
+        });
+
+        // Leaf to Endpoints
+        svg += getLineHtml('leaf1-node', 'ep-web-node', 'active');
+        svg += getLineHtml('leaf2-node', 'ep-db-node', state.security.microseg === 'enabled' ? 'active' : 'blocked');
+        svg += getLineHtml('leaf3-node', 'ep-voip-node', 'active');
+        svg += getLineHtml('leaf4-node', 'ep-pos-node', 'active');
+        svg += getLineHtml('leaf5-node', 'ep-wifi-node', 'active');
+        svg += getLineHtml('leaf6-node', 'ep-dmz-node', 'active');
+        svg += getLineHtml('leaf7-node', 'ep-trade-node', isSdwan ? 'sdwan' : 'active');
+        svg += getLineHtml('leaf8-node', 'ep-nas-node', state.voip_storage.mtu === '9000' ? 'active' : 'blocked');
+
+        document.getElementById('svg-connections').innerHTML = svg;
+    }
+
+    // Interactive Action Controls
+    function runTrafficAudit() {
+        logTerminal('\n>>> AUDIT TRAFIK & LATENCY JARINGAN DC...', 'terminal-sys');
+        
+        if(state.fabric.underlay !== 'bgp' || state.fabric.vxlan !== 'enabled') {
+            logTerminal('[AUDIT ERROR] Fabric DC Down! Spine-Leaf BGP EVPN belum aktif.', 'terminal-fail');
+            return;
+        }
+
+        if(state.sdwan.pfr === 'enabled') {
+            logTerminal('HFT Trading Latency: 4.2 ms via Leased Line Dedicated (PASSED < 10ms)', 'terminal-success');
+            logTerminal('CCTV & NAS Backup: Route via Public Internet WAN (PASSED)', 'terminal-success');
+        } else {
+            logTerminal('[WARN] PfR Inaktif. Trafik HFT mengalami jitter tingi (> 28ms)!', 'terminal-warn');
+        }
+
+        if(state.security.microseg === 'enabled') {
+            logTerminal('Zero-Trust Policy: Access to DB Cluster restricted ONLY to Web-01 & Web-02 (PASSED)', 'terminal-success');
+        } else {
+            logTerminal('[SECURITY RISK] Micro-segmentation Inaktif! Server DB dapat diakses publik!', 'terminal-fail');
+        }
+    }
+
+    function triggerDoubleFailure() {
+        state.dr_defense.asa1_power = !state.dr_defense.asa1_power;
+        state.dr_defense.spine1_power = !state.dr_defense.spine1_power;
+
+        const btn = document.getElementById('btn-dr-test');
+        if(!state.dr_defense.asa1_power) {
+            btn.innerHTML = '<i class="fa-solid fa-recycle"></i> Pulihkan Perangkat DC';
+            btn.className = 'btn-cisco';
+            logTerminal('\n[BENCANA SIMULASI] Spine-1 & ASA Firewall Utama DIMATIKAN secara mendadak!', 'terminal-fail');
+
+            if(state.dr_defense.failover === 'enabled') {
+                setTimeout(() => {
+                    logTerminal('Stateful Failover Triggered! Traffic rerouted to ASA-2 Standby & Spine-2 dalam 2.4 detik (PASSED)', 'terminal-success');
+                    evaluateSystem();
+                }, 800);
+            } else {
+                setTimeout(() => {
+                    logTerminal('[FAILOVER ERROR] ASA Failover Cluster mati! Koneksi finansial terputus total!', 'terminal-fail');
+                    evaluateSystem();
+                }, 800);
+            }
+        } else {
+            btn.innerHTML = '<i class="fa-solid fa-dumpster-fire"></i> Test Failover Ganda';
+            btn.className = 'btn-danger';
+            logTerminal('\n[SYSTEM] Spine-1 dan ASA-1 berhasil dihidupkan kembali.', 'terminal-sys');
+            evaluateSystem();
+        }
+    }
+
+    function triggerDDoSAttack() {
+        logTerminal('\n[ALERT] Peringatan Dini: Banjir Paket ICMP & SYN Flood 100 Gbps ke Web Banking DMZ!', 'terminal-fail');
+        
+        if(state.dr_defense.storm === 'enabled' && state.security.waf === 'enabled') {
+            setTimeout(() => {
+                logTerminal('uRPF Check: 45,000 Spoofed IP Packets Dropped at Leaf-1 Access Level.', 'terminal-success');
+                logTerminal('WAF Filter: 120 SQL Injection & XSS Attack Payloads Blocked.', 'terminal-success');
+                logTerminal('Status Jaringan: 100% Normal Traffic Flow Preserved (PASSED)', 'terminal-success');
+            }, 600);
+        } else {
+            setTimeout(() => {
+                logTerminal('[CRITICAL] Server Web Banking DOWN akibat DDoS Flood! Leaf Rate Limit & WAF belum terpasang!', 'terminal-fail');
+            }, 600);
+        }
+    }
+
+    function showVXLANStatus() {
+        logTerminal('\n# show vxlan evpn summary', 'terminal-sys');
+        if(state.fabric.vxlan === 'enabled') {
+            logTerminal('VNI: 10001 | Overlay L2 extension | Leaf-1 <-> Leaf-2 [ESTABLISHED]', 'terminal-success');
+            logTerminal('VNI: 10002 | DB Isolation Segment  | Leaf-2 <-> Leaf-8 [ESTABLISHED]', 'terminal-success');
+            logTerminal('BGP EVPN Route Distinguisher (RD): 65000:10001 (Active)', 'terminal-sys');
+        } else {
+            logTerminal('VXLAN Overlay Is Inactive or Not Configured.', 'terminal-warn');
+        }
+    }
+
+    function resetLabState() {
+        state = {
+            fabric: { underlay: 'none', vxlan: 'disabled' },
+            sdwan: { tunnel: 'disabled', pfr: 'disabled' },
+            security: { microseg: 'disabled', waf: 'disabled', dot1x: 'disabled' },
+            voip_storage: { voip: 'disabled', mtu: '1500' },
+            dr_defense: { failover: 'disabled', storm: 'disabled', asa1_power: true, spine1_power: true }
+        };
+        logTerminal('\n[SYSTEM] Lab Topologi & Konfigurasi berhasil direset.', 'terminal-sys');
+        evaluateSystem();
+    }
+
+    // Auto Redraw on Resize
+    let resizeTimer;
+    window.addEventListener('resize', () => {
+        clearTimeout(resizeTimer);
+        resizeTimer = setTimeout(() => renderCanvasConnections(), 100);
+    });
+
+    // Init Engine
+    setTimeout(() => {
+        logTerminal('[DC CORE BOOT] System Initialized (Global Financial Data Center Architecture)...', 'terminal-sys');
+        evaluateSystem();
+    }, 400);
+</script>
+</body>
+</html>

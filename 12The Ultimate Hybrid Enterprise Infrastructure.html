@@ -1,0 +1,875 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Praktikum Master - The Ultimate Hybrid Enterprise Infrastructure</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+
+    <style>
+        :root {
+            --cisco-blue: #005073;
+            --cisco-light-blue: #0284c7;
+            --cisco-accent: #06b6d4;
+            --bg-light: #f8fafc;
+            --card-bg: #ffffff;
+            --text-dark: #0f172a;
+            --text-muted: #64748b;
+            --border-color: #e2e8f0;
+            --success-color: #10b981;
+            --danger-color: #ef4444;
+            --warning-color: #f59e0b;
+            --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+            --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.05);
+            --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.05);
+            --transition-smooth: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { background-color: var(--bg-light); color: var(--text-dark); font-family: 'Inter', sans-serif; padding: 32px 16px; line-height: 1.5; -webkit-font-smoothing: antialiased; }
+        
+        .container { 
+            max-width: 1400px; 
+            margin: 0 auto; 
+            background-color: var(--card-bg); 
+            border-radius: 16px; 
+            box-shadow: var(--shadow-lg); 
+            overflow: hidden; 
+            border: 1px solid var(--border-color);
+        }
+        
+        /* HEADER */
+        header { 
+            background: linear-gradient(135deg, #002b40 0%, var(--cisco-blue) 100%); 
+            color: #fff; 
+            padding: 28px 32px; 
+            display: flex; 
+            justify-content: space-between; 
+            align-items: center; 
+            border-bottom: 3px solid var(--cisco-accent);
+            flex-wrap: wrap;
+            gap: 20px;
+        }
+        .header-title { display: flex; align-items: center; gap: 16px; }
+        .header-title i { font-size: 32px; color: var(--cisco-accent); background: rgba(255,255,255,0.05); padding: 16px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.1); }
+        .header-title h1 { font-size: 22px; font-weight: 700; margin-bottom: 4px; letter-spacing: -0.02em; }
+        .header-title p { font-size: 13px; color: #cbd5e1; font-weight: 400; }
+
+        .header-meta { display: flex; gap: 16px; align-items: center; }
+        .meta-badge { background: rgba(255,255,255,0.1); padding: 8px 14px; border-radius: 8px; font-size: 12px; font-weight: 600; color: #38bdf8; border: 1px solid rgba(255,255,255,0.15); display: flex; align-items: center; gap: 8px; }
+
+        .score-box { 
+            background: rgba(15, 23, 42, 0.4); 
+            padding: 12px 24px; 
+            border-radius: 12px; 
+            border: 1px solid rgba(255,255,255,0.15); 
+            text-align: right; 
+            backdrop-filter: blur(8px);
+        }
+        .score-title { font-size: 11px; text-transform: uppercase; color: #94a3b8; font-weight: 700; letter-spacing: 0.05em; }
+        .score-value { font-size: 28px; font-weight: 700; color: var(--success-color); font-family: 'JetBrains Mono', monospace; margin-top: 2px; }
+
+        /* TOPOLOGY AREA */
+        .topology-section { padding: 0; background-color: #ffffff; border-bottom: 1px solid var(--border-color); }
+        .section-header { padding: 18px 32px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); background: #f8fafc; }
+        .section-header-title { font-weight: 600; color: var(--text-dark); font-size: 15px; display: flex; align-items: center; gap: 10px; }
+        .section-header-title i { color: var(--cisco-blue); font-size: 18px; }
+        
+        .topology-wrapper { width: 100%; overflow-x: auto; }
+        .topology-wrapper::-webkit-scrollbar { height: 8px; }
+        .topology-wrapper::-webkit-scrollbar-track { background: #f1f5f9; }
+        .topology-wrapper::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+
+        .topology-canvas { position: relative; height: 680px; min-width: 1100px; background-color: #f8fafc; background-image: radial-gradient(#cbd5e1 1px, transparent 1px); background-size: 30px 30px; overflow: hidden; }
+        .connections-svg { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 1; }
+        
+        /* CABLES */
+        .wired-line { stroke: #cbd5e1; stroke-width: 3; transition: stroke 0.4s ease, opacity 0.4s ease; stroke-linecap: round; }
+        .wired-line.active { stroke: var(--success-color); stroke-width: 3,5; }
+        .wired-line.etherchannel { stroke: var(--cisco-accent); stroke-width: 7; stroke-dasharray: 12 4; animation: flowData 1s linear infinite; }
+        .wired-line.blocked { stroke: var(--warning-color); stroke-dasharray: 6 6; stroke-width: 3; }
+        .wired-line.offline { stroke: var(--danger-color); stroke-width: 2; opacity: 0.25; }
+        
+        @keyframes flowData { to { stroke-dashoffset: -32; } }
+
+        /* DEVICES */
+        .device-node { position: absolute; z-index: 2; display: flex; flex-direction: column; align-items: center; cursor: pointer; user-select: none; transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1); }
+        .device-node:hover { transform: translateY(-6px); }
+        .device-node:active { transform: scale(0.96); }
+        .device-node.offline { opacity: 0.4; filter: grayscale(100%); }
+        
+        .device-icon-box { width: 58px; height: 58px; background-color: #fff; border: 2px solid var(--border-color); border-radius: 14px; display: flex; justify-content: center; align-items: center; box-shadow: var(--shadow-sm); position: relative; transition: var(--transition-smooth); }
+        .device-icon-box i, .device-icon-box svg { font-size: 24px; color: var(--text-muted); transition: color 0.3s ease; }
+        .device-node:hover .device-icon-box { border-color: var(--cisco-light-blue); box-shadow: 0 10px 15px -3px rgba(2, 132, 199, 0.15); }
+        
+        .device-node.configured .device-icon-box { border-color: var(--cisco-blue); background: #f0f9ff; }
+        .device-node.configured .device-icon-box i, 
+        .device-node.configured .device-icon-box svg { color: var(--cisco-blue); }
+        
+        .device-label { margin-top: 8px; font-size: 11px; font-weight: 600; background: rgba(255,255,255,0.95); padding: 5px 10px; border: 1px solid var(--border-color); border-radius: 8px; text-align: center; line-height: 1.3; box-shadow: var(--shadow-sm); backdrop-filter: blur(4px); }
+        .device-ip { font-size: 10px; color: var(--text-muted); font-weight: 500; display: block; margin-top: 2px; font-family: 'JetBrains Mono', monospace; }
+        .device-node.configured .device-ip { color: var(--cisco-light-blue); font-weight: 600; }
+        
+        .status-badge { position: absolute; top: -6px; right: -6px; width: 22px; height: 22px; border-radius: 50%; background-color: var(--danger-color); border: 2px solid #fff; display: flex; align-items: center; justify-content: center; font-size: 10px; color: #fff; font-weight: bold; box-shadow: var(--shadow-sm); transition: var(--transition-smooth); }
+        .status-badge.online { background-color: var(--success-color); }
+
+        /* Coordinates Master Topology (35+ Device Representations) */
+        #isp-node { top: 3%; left: 50%; transform: translateX(-50%); }
+        #edge-node { top: 16%; left: 50%; transform: translateX(-50%); }
+        #dmz-node { top: 16%; left: 18%; }
+        #wlc-node { top: 16%; left: 82%; transform: translateX(-100%); }
+        
+        #r-core1-node { top: 33%; left: 38%; transform: translateX(-50%); }
+        #r-core2-node { top: 33%; left: 62%; transform: translateX(-50%); }
+        
+        #r-dist-a-node { top: 48%; left: 22%; transform: translateX(-50%); }
+        #r-dist-b-node { top: 48%; left: 78%; transform: translateX(-50%); }
+
+        #sw-core-a-node { top: 63%; left: 38%; transform: translateX(-50%); }
+        #sw-core-b-node { top: 63%; left: 62%; transform: translateX(-50%); }
+
+        #sw-acc1-node { top: 80%; left: 15%; transform: translateX(-50%); }
+        #sw-acc2-node { top: 80%; left: 38%; transform: translateX(-50%); }
+        #sw-acc3-node { top: 80%; left: 62%; transform: translateX(-50%); }
+        #sw-acc4-node { top: 80%; left: 85%; transform: translateX(-50%); }
+
+        /* BOTTOM SECTION */
+        .lkpd-body { padding: 32px; display: grid; grid-template-columns: 1.1fr 1fr; gap: 32px; background: #fff; }
+        .card { background: #fff; border: 1px solid var(--border-color); border-radius: 16px; padding: 24px; box-shadow: var(--shadow-sm); }
+        .card-title { font-size: 16px; font-weight: 700; color: var(--text-dark); margin-bottom: 20px; display: flex; align-items: center; justify-content: space-between; }
+        .card-title-left { display: flex; align-items: center; gap: 10px; }
+        .card-title i { color: var(--cisco-blue); font-size: 18px; }
+        
+        /* CHECKLIST */
+        .checklist-group { display: flex; flex-direction: column; gap: 14px; }
+        .checklist-item { display: flex; flex-direction: column; background: #f8fafc; border: 1px solid var(--border-color); padding: 16px 18px; border-radius: 12px; transition: var(--transition-smooth); gap: 6px; cursor: pointer; }
+        .checklist-item:hover { border-color: #cbd5e1; box-shadow: var(--shadow-sm); transform: translateY(-2px); }
+        .checklist-item.completed { background: #f0fdf4; border-color: #bbf7d0; }
+        
+        .item-header { display: flex; align-items: center; justify-content: space-between; }
+        .item-info { display: flex; align-items: center; gap: 12px; font-size: 14px; font-weight: 600; color: var(--text-dark); }
+        .item-info i { font-size: 18px; color: var(--text-muted); transition: 0.3s; }
+        .checklist-item.completed .item-info i { color: var(--success-color); }
+        .item-points { font-size: 11px; font-weight: 700; background: #e2e8f0; color: #475569; padding: 4px 10px; border-radius: 20px; }
+        .checklist-item.completed .item-points { background: #dcfce7; color: #15803d; }
+        .item-desc { font-size: 12px; color: var(--text-muted); margin-left: 30px; line-height: 1.5; }
+
+        /* TABLES */
+        .table-responsive { overflow-x: auto; margin-top: 16px; }
+        table { width: 100%; border-collapse: collapse; font-size: 12px; text-align: left; }
+        th { background: #f1f5f9; color: var(--text-dark); font-weight: 700; padding: 10px 12px; border-bottom: 2px solid var(--border-color); }
+        td { padding: 10px 12px; border-bottom: 1px solid var(--border-color); color: var(--text-dark); }
+        tr:hover { background: #f8fafc; }
+
+        /* TERMINAL */
+        .terminal-container { border-radius: 12px; overflow: hidden; box-shadow: var(--shadow-md); border: 1px solid #1e293b; background: #0f172a; margin-top: 10px; }
+        .terminal-header { background: #1e293b; padding: 10px 16px; display: flex; align-items: center; gap: 8px; }
+        .terminal-dot { width: 10px; height: 10px; border-radius: 50%; }
+        .terminal-dot.red { background: #ef4444; }
+        .terminal-dot.yellow { background: #f59e0b; }
+        .terminal-dot.green { background: #10b981; }
+        .terminal-title { margin-left: auto; margin-right: auto; color: #94a3b8; font-size: 12px; font-weight: 500; font-family: 'Inter', sans-serif; }
+        
+        .terminal-box { color: #e2e8f0; font-family: 'JetBrains Mono', monospace; font-size: 12px; padding: 16px; height: 250px; overflow-y: auto; line-height: 1.6; }
+        .terminal-time { color: #64748b; margin-right: 8px; }
+        .terminal-success { color: #34d399; } 
+        .terminal-fail { color: #f87171; } 
+        .terminal-warn { color: #fbbf24; }
+        .terminal-sys { color: #38bdf8; }
+        
+        /* BUTTONS */
+        .controls-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 18px; }
+        button { padding: 10px 16px; font-size: 13px; border-radius: 8px; font-weight: 600; cursor: pointer; transition: var(--transition-smooth); display: flex; align-items: center; justify-content: center; gap: 8px; font-family: 'Inter', sans-serif; outline: none; border: none; }
+        button:active { transform: scale(0.98); }
+        
+        .btn-cisco { background: var(--cisco-blue); color: #fff; }
+        .btn-cisco:hover { background: #003b54; box-shadow: var(--shadow-md); }
+        .btn-secondary { background: #fff; color: var(--text-dark); border: 1px solid var(--border-color); }
+        .btn-secondary:hover { background: #f8fafc; border-color: #cbd5e1; }
+        .btn-danger { background: var(--danger-color); color: #fff; }
+        .btn-danger:hover { background: #dc2626; box-shadow: var(--shadow-md); }
+
+        /* MODALS */
+        .modal-overlay { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(15,23,42,0.6); backdrop-filter: blur(6px); display: flex; justify-content: center; align-items: center; opacity: 0; pointer-events: none; transition: opacity 0.3s ease; z-index: 100; padding: 16px; }
+        .modal-overlay.active { opacity: 1; pointer-events: auto; }
+        .modal-overlay.active .cisco-modal { transform: scale(1) translateY(0); opacity: 1; }
+        
+        .cisco-modal { background: #fff; width: 100%; max-width: 520px; border-radius: 16px; overflow: hidden; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.3); transform: scale(0.95) translateY(10px); opacity: 0; transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1); }
+        .modal-header { background: #002b40; color: #fff; padding: 18px 24px; display: flex; justify-content: space-between; align-items: center; border-bottom: 3px solid var(--cisco-light-blue); }
+        .modal-header h3 { font-size: 15px; font-weight: 600; display: flex; align-items: center; gap: 10px; }
+        .modal-close { background: none; border: none; color: rgba(255,255,255,0.6); cursor: pointer; font-size: 22px; line-height: 1; transition: var(--transition-smooth); }
+        .modal-close:hover { color: #fff; transform: rotate(90deg); }
+        
+        .modal-body { padding: 20px 24px; max-height: 70vh; overflow-y: auto; }
+        .form-grid { display: flex; flex-direction: column; gap: 8px; margin-bottom: 16px; }
+        .form-grid label { font-size: 12px; font-weight: 600; color: var(--text-dark); }
+        .form-grid input, .form-grid select { padding: 10px 14px; border: 1px solid var(--border-color); border-radius: 8px; font-size: 13px; font-family: inherit; transition: var(--transition-smooth); background: #f8fafc; color: var(--text-dark); width: 100%; }
+        .form-grid input:focus, .form-grid select:focus { outline: none; border-color: var(--cisco-light-blue); background: #fff; box-shadow: 0 0 0 3px rgba(2, 132, 199, 0.1); }
+        
+        .modal-footer { padding: 16px 24px; background: #f8fafc; display: flex; justify-content: flex-end; gap: 10px; border-top: 1px solid var(--border-color); }
+        .badge-info { font-size: 12px; background: #f0f9ff; color: #0369a1; padding: 12px 14px; border-radius: 8px; margin-bottom: 18px; line-height: 1.5; border-left: 4px solid #0284c7; }
+
+        @media (max-width: 1024px) {
+            .lkpd-body { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <header>
+        <div class="header-title">
+            <i class="fa-solid fa-network-wired"></i>
+            <div>
+                <h1>The Ultimate Hybrid Enterprise Infrastructure</h1>
+                <p>Skenario Master Praktikum Pro (5 Modul Terintegrasi • 35+ Perangkat • Estimasi 240 Menit)</p>
+            </div>
+        </div>
+        <div class="header-meta">
+            <div class="meta-badge"><i class="fa-solid fa-layer-group"></i> Level: Advanced / Expert</div>
+            <div class="score-box">
+                <div class="score-title">Nilai Praktikum</div>
+                <div class="score-value" id="total-score">0 / 100</div>
+            </div>
+        </div>
+    </header>
+
+    <div class="topology-section">
+        <div class="section-header">
+            <span class="section-header-title"><i class="fa-solid fa-diagram-project"></i> Interaksi Topologi Master Enterprise (Klik Node Modul)</span>
+            <button class="btn-secondary" style="font-size: 12px; padding: 6px 14px;" onclick="resetAllConfigs()">
+                <i class="fa-solid fa-rotate-right"></i> Reset Master Lab
+            </button>
+        </div>
+        
+        <div class="topology-wrapper">
+            <div class="topology-canvas" id="canvas-area">
+                <svg class="connections-svg" id="svg-connections"></svg>
+
+                <!-- 1. ISP Cloud -->
+                <div class="device-node" id="isp-node">
+                    <div class="device-icon-box"><i class="fa-solid fa-cloud"></i></div>
+                    <div class="device-label">ISP / Internet Cloud<br><span class="device-ip">200.1.1.1/30</span></div>
+                </div>
+
+                <!-- 2. Edge / NAT Router -->
+                <div class="device-node" id="edge-node" onclick="openModal('mod4-modal')">
+                    <div class="device-icon-box">
+                        <i class="fa-solid fa-shield-halved"></i>
+                        <div class="status-badge" id="edge-badge">!</div>
+                    </div>
+                    <div class="device-label">Edge / NAT / FW Router<br><span class="device-ip" id="lbl-edge">NAT: Unconfigured</span></div>
+                </div>
+
+                <!-- 3. DMZ Server Farm -->
+                <div class="device-node" id="dmz-node" onclick="openModal('mod4-modal')">
+                    <div class="device-icon-box">
+                        <i class="fa-solid fa-server"></i>
+                        <div class="status-badge" id="dmz-badge">!</div>
+                    </div>
+                    <div class="device-label">DMZ Server Farm (5 Servers)<br><span class="device-ip" id="lbl-dmz">Web: 192.168.100.10</span></div>
+                </div>
+
+                <!-- 4. WLC Controller & APs -->
+                <div class="device-node" id="wlc-node" onclick="openModal('mod3-modal')">
+                    <div class="device-icon-box">
+                        <i class="fa-solid fa-wifi"></i>
+                        <div class="status-badge" id="wlc-badge">!</div>
+                    </div>
+                    <div class="device-label">WLC Controller & APs (1-4)<br><span class="device-ip" id="lbl-wlc">SSID: Unconfigured</span></div>
+                </div>
+
+                <!-- 5. Core Routers (OSPF Area 0) -->
+                <div class="device-node" id="r-core1-node" onclick="openModal('mod2-modal')">
+                    <div class="device-icon-box">
+                        <i class="fa-solid fa-route"></i>
+                        <div class="status-badge" id="rcore1-badge">!</div>
+                    </div>
+                    <div class="device-label">Core Router 1 (HQ Area 0)<br><span class="device-ip" id="lbl-rcore1">OSPF: Down</span></div>
+                </div>
+
+                <div class="device-node" id="r-core2-node" onclick="openModal('mod2-modal')">
+                    <div class="device-icon-box">
+                        <i class="fa-solid fa-route"></i>
+                        <div class="status-badge" id="rcore2-badge">!</div>
+                    </div>
+                    <div class="device-label">Core Router 2 (HQ Area 0)<br><span class="device-ip" id="lbl-rcore2">OSPF: Down</span></div>
+                </div>
+
+                <!-- 6. Distribution Routers -->
+                <div class="device-node" id="r-dist-a-node" onclick="openModal('mod2-modal')">
+                    <div class="device-icon-box">
+                        <i class="fa-solid fa-code-branch"></i>
+                        <div class="status-badge" id="rdist-a-badge">!</div>
+                    </div>
+                    <div class="device-label">Dist. Router Cab A<br><span class="device-ip" id="lbl-rdist-a">Area 10 (Summarized)</span></div>
+                </div>
+
+                <div class="device-node" id="r-dist-b-node" onclick="openModal('mod2-modal')">
+                    <div class="device-icon-box">
+                        <i class="fa-solid fa-code-branch"></i>
+                        <div class="status-badge" id="rdist-b-badge">!</div>
+                    </div>
+                    <div class="device-label">Dist. Router Cab B<br><span class="device-ip" id="lbl-rdist-b">Area 20 (Summarized)</span></div>
+                </div>
+
+                <!-- 7. L3 Switch Core -->
+                <div class="device-node" id="sw-core-a-node" onclick="openModal('mod1-modal')">
+                    <div class="device-icon-box">
+                        <i class="fa-solid fa-network-wired"></i>
+                        <div class="status-badge" id="swcore-a-badge">!</div>
+                    </div>
+                    <div class="device-label">L3 Switch Core-A<br><span class="device-ip" id="lbl-swcore-a">PVST+ / HSRP</span></div>
+                </div>
+
+                <div class="device-node" id="sw-core-b-node" onclick="openModal('mod1-modal')">
+                    <div class="device-icon-box">
+                        <i class="fa-solid fa-network-wired"></i>
+                        <div class="status-badge" id="swcore-b-badge">!</div>
+                    </div>
+                    <div class="device-label">L3 Switch Core-B<br><span class="device-ip" id="lbl-swcore-b">PVST+ / HSRP</span></div>
+                </div>
+
+                <!-- 8. Access Switches & End Devices -->
+                <div class="device-node" id="sw-acc1-node" onclick="openModal('mod1-modal')">
+                    <div class="device-icon-box"><i class="fa-solid fa-sitemap"></i><div class="status-badge" id="swacc1-badge">!</div></div>
+                    <div class="device-label">SW-Acc 1 (VLAN 10)<br><span class="device-ip">Staff HQ</span></div>
+                </div>
+
+                <div class="device-node" id="sw-acc2-node" onclick="openModal('mod3-modal')">
+                    <div class="device-icon-box"><i class="fa-solid fa-phone-volume"></i><div class="status-badge" id="swacc2-badge">!</div></div>
+                    <div class="device-label">SW-Acc 2 (VLAN 20)<br><span class="device-ip">VoIP CME (Ext 1001)</span></div>
+                </div>
+
+                <div class="device-node" id="sw-acc3-node" onclick="openModal('mod2-modal')">
+                    <div class="device-icon-box"><i class="fa-solid fa-sitemap"></i><div class="status-badge" id="swacc3-badge">!</div></div>
+                    <div class="device-label">SW-Acc 3 (VLAN 30)<br><span class="device-ip">Cabang-A Client</span></div>
+                </div>
+
+                <div class="device-node" id="sw-acc4-node" onclick="openModal('mod5-modal')">
+                    <div class="device-icon-box"><i class="fa-solid fa-user-lock"></i><div class="status-badge" id="swacc4-badge">!</div></div>
+                    <div class="device-label">SW-Acc 4 (VLAN 40)<br><span class="device-ip">Cabang-B Guest</span></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="lkpd-body">
+        <!-- Checklist & Skenario Modul -->
+        <div class="card">
+            <div class="card-title">
+                <div class="card-title-left"><i class="fa-solid fa-list-check"></i> 5 Modul Skenario Interaktif</div>
+                <span style="font-size: 11px; color: var(--text-muted);">Klik modul untuk konfigurasi</span>
+            </div>
+            
+            <div class="checklist-group">
+                <!-- Modul 1 -->
+                <div class="checklist-item" id="chk-mod1" onclick="openModal('mod1-modal')">
+                    <div class="item-header">
+                        <div class="item-info"><i class="fa-regular fa-circle-check" id="icon-mod1"></i><span>Modul 1: High Availability Core & STP Tuning</span></div>
+                        <span class="item-points">20 Point</span>
+                    </div>
+                    <div class="item-desc">LACP EtherChannel (3 link fisik), PVST+ Root Bridge Tuning (VLAN 10/20 & 30/40), serta HSRP Gateway Redundancy.</div>
+                </div>
+
+                <!-- Modul 2 -->
+                <div class="checklist-item" id="chk-mod2" onclick="openModal('mod2-modal')">
+                    <div class="item-header">
+                        <div class="item-info"><i class="fa-regular fa-circle-check" id="icon-mod2"></i><span>Modul 2: Multi-Area OSPF & Path Optimization</span></div>
+                        <span class="item-points">20 Point</span>
+                    </div>
+                    <div class="item-desc">OSPF Multi-Area (Area 0, 10, 20), Route Summarization pada Distribution Router, dan Metric Cost tuning jalur backup.</div>
+                </div>
+
+                <!-- Modul 3 -->
+                <div class="checklist-item" id="chk-mod3" onclick="openModal('mod3-modal')">
+                    <div class="item-header">
+                        <div class="item-info"><i class="fa-regular fa-circle-check" id="icon-mod3"></i><span>Modul 3: Enterprise Wireless WLC & IP Telephony</span></div>
+                        <span class="item-points">20 Point</span>
+                    </div>
+                    <div class="item-desc">WLC SSID RADIUS/AAA + PSK Guest, CAPWAP Tunneling AP1-4, serta Voice VLAN CME (Ext 1001-1005).</div>
+                </div>
+
+                <!-- Modul 4 -->
+                <div class="checklist-item" id="chk-mod4" onclick="openModal('mod4-modal')">
+                    <div class="item-header">
+                        <div class="item-info"><i class="fa-regular fa-circle-check" id="icon-mod4"></i><span>Modul 4: DMZ Server Farm, NAT & Security</span></div>
+                        <span class="item-points">20 Point</span>
+                    </div>
+                    <div class="item-desc">Dynamic PAT LAN, Static NAT (200.1.1.5 -> 192.168.100.10), serta publikasi domain www.perusahaan-pro.id.</div>
+                </div>
+
+                <!-- Modul 5 -->
+                <div class="checklist-item" id="chk-mod5" onclick="openModal('mod5-modal')">
+                    <div class="item-header">
+                        <div class="item-info"><i class="fa-regular fa-circle-check" id="icon-mod5"></i><span>Modul 5: Extended ACL & Disaster Recovery Challenge</span></div>
+                        <span class="item-points">20 Point</span>
+                    </div>
+                    <div class="item-desc">Extended ACL pemblokiran Guest HTTP/FTP, QoS Tagging VoIP, dan pengujian Failover mati link (< 30 detik).</div>
+                </div>
+            </div>
+
+            <!-- Breakdown Waktu Praktikum -->
+            <div style="margin-top: 24px;">
+                <div class="card-title-left" style="font-weight: 700; font-size: 14px; margin-bottom: 10px;"><i class="fa-solid fa-clock"></i> Breakdown Alokasi Waktu (240 Menit)</div>
+                <div class="table-responsive">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Waktu</th>
+                                <th>Durasi</th>
+                                <th>Tahapan Pengerjaan</th>
+                                <th>Target Output</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr><td>00:00 - 00:30</td><td>30 Min</td><td>Physical Topology & IP VLSM</td><td>Subnetting VLSM (/24, /28, /30) & Kabel fisik</td></tr>
+                            <tr><td>00:30 - 01:15</td><td>45 Min</td><td>Switching, EtherChannel, STP, HSRP</td><td>Trunking, PVST+, LACP, HSRP Gateway</td></tr>
+                            <tr><td>01:15 - 02:00</td><td>45 Min</td><td>Multi-Area OSPF Routing</td><td>OSPF Area 0, 10, 20 & Summarization</td></tr>
+                            <tr><td>02:00 - 02:45</td><td>45 Min</td><td>Enterprise Services (WLC & VoIP)</td><td>WLC RADIUS, AP Tunneling, IP Phone CME</td></tr>
+                            <tr><td>02:45 - 03:20</td><td>35 Min</td><td>Edge Security, NAT & Extended ACL</td><td>PAT, Static NAT, Server DMZ, Rule ACL</td></tr>
+                            <tr><td>03:20 - 03:40</td><td>20 Min</td><td>Disaster Recovery Challenge</td><td>Simulasi Failover & Reconvergence < 30s</td></tr>
+                            <tr><td>03:40 - 04:00</td><td>20 Min</td><td>Final Audit & Documentation</td><td>Command Verification & Log file submission</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Terminal Output & Console Test -->
+        <div class="card">
+            <div class="card-title">
+                <div class="card-title-left"><i class="fa-solid fa-terminal"></i> Terminal System & Audit Diagnostics</div>
+            </div>
+            
+            <div class="terminal-container">
+                <div class="terminal-header">
+                    <div class="terminal-dot red"></div>
+                    <div class="terminal-dot yellow"></div>
+                    <div class="terminal-dot green"></div>
+                    <div class="terminal-title">cisco-ios-cli - master audit</div>
+                </div>
+                <div class="terminal-box" id="terminal-output">
+                    <!-- Dynamic Logs -->
+                </div>
+            </div>
+
+            <div class="controls-grid">
+                <button class="btn-cisco" onclick="runFullDiagnostic()"><i class="fa-solid fa-magnifying-glass"></i> Audit System Test</button>
+                <button class="btn-danger" id="btn-disaster" onclick="triggerDisasterChallenge()"><i class="fa-solid fa-bolt-lightning"></i> Disaster Challenge Test</button>
+            </div>
+
+            <div style="margin-top: 24px; padding: 14px; background: #f8fafc; border-radius: 10px; border: 1px solid var(--border-color);">
+                <span style="font-size: 12px; font-weight: 700; color: var(--text-dark); display: block; margin-bottom: 6px;"><i class="fa-solid fa-clipboard-check"></i> Rubrik Scoring Praktikum:</span>
+                <ul style="font-size: 11px; color: var(--text-muted); margin-left: 18px; line-height: 1.6;">
+                    <li><b>Switching & Redundancy (20 Point):</b> HSRP active/standby, LACP up, PVST+ no loop.</li>
+                    <li><b>Routing OSPF (20 Point):</b> OSPF neighbor up, multi-area & summarization aktif.</li>
+                    <li><b>Services & WLC (20 Point):</b> Provisioning WLC RADIUS & IP Phone CME dial tone.</li>
+                    <li><b>NAT & Security (20 Point):</b> Static NAT Web DMZ & Extended ACL Guest restriction.</li>
+                    <li><b>Disaster Recovery (20 Point):</b> Service failover stabil dalam waktu < 30 detik.</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- MODAL MODUL 1 -->
+<div class="modal-overlay" id="mod1-modal">
+    <div class="cisco-modal">
+        <div class="modal-header">
+            <h3><i class="fa-solid fa-network-wired"></i> Modul 1: High Availability Core & STP Tuning</h3>
+            <button class="modal-close" onclick="closeModal('mod1-modal')">&times;</button>
+        </div>
+        <div class="modal-body">
+            <div class="badge-info">Konfigurasi LACP EtherChannel, PVST+ Root Bridge, dan HSRP Virtual Gateway.</div>
+            <div class="form-grid">
+                <label>LACP EtherChannel (3 Physical Link)</label>
+                <select id="cfg-m1-lacp">
+                    <option value="none">Disabled (No Aggregation)</option>
+                    <option value="lacp">Enabled (Mode Active - Channel-Group 1)</option>
+                </select>
+            </div>
+            <div class="form-grid">
+                <label>PVST+ Root Bridge Allocation</label>
+                <select id="cfg-m1-pvst">
+                    <option value="default">Default Priority (32768)</option>
+                    <option value="correct">Core-A (Root VLAN 10,20) & Core-B (Root VLAN 30,40)</option>
+                </select>
+            </div>
+            <div class="form-grid">
+                <label>HSRP Virtual Gateway IP (LAN HQ)</label>
+                <input type="text" id="cfg-m1-hsrp" placeholder="Contoh: 192.168.10.254">
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn-secondary" onclick="closeModal('mod1-modal')">Batal</button>
+            <button class="btn-cisco" onclick="saveMod1()">Simpan & Terapkan</button>
+        </div>
+    </div>
+</div>
+
+<!-- MODAL MODUL 2 -->
+<div class="modal-overlay" id="mod2-modal">
+    <div class="cisco-modal">
+        <div class="modal-header">
+            <h3><i class="fa-solid fa-route"></i> Modul 2: Multi-Area OSPF Dynamic Routing</h3>
+            <button class="modal-close" onclick="closeModal('mod2-modal')">&times;</button>
+        </div>
+        <div class="modal-body">
+            <div class="badge-info">Konfigurasi Multi-Area OSPF (Area 0, 10, 20) dan Route Summarization.</div>
+            <div class="form-grid">
+                <label>Status Topology Area OSPF</label>
+                <select id="cfg-m2-ospf">
+                    <option value="none">OSPF Single Area / Disabled</option>
+                    <option value="correct">Multi-Area Active (Area 0 Backbone, Area 10, Area 20)</option>
+                </select>
+            </div>
+            <div class="form-grid">
+                <label>Route Summarization pada Distribution Router</label>
+                <select id="cfg-m2-summary">
+                    <option value="false">Disabled (Full Routing Table)</option>
+                    <option value="true">Enabled (Area 10 & 20 Summary Route)</option>
+                </select>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn-secondary" onclick="closeModal('mod2-modal')">Batal</button>
+            <button class="btn-cisco" onclick="saveMod2()">Simpan & Terapkan</button>
+        </div>
+    </div>
+</div>
+
+<!-- MODAL MODUL 3 -->
+<div class="modal-overlay" id="mod3-modal">
+    <div class="cisco-modal">
+        <div class="modal-header">
+            <h3><i class="fa-solid fa-wifi"></i> Modul 3: WLC Wireless & IP Telephony Integration</h3>
+            <button class="modal-close" onclick="closeModal('mod3-modal')">&times;</button>
+        </div>
+        <div class="modal-body">
+            <div class="badge-info">Pengaturan WLC Enterprise RADIUS AAA, PSK Guest, serta Cisco CME VoIP.</div>
+            <div class="form-grid">
+                <label>SSID Internal Security Model</label>
+                <select id="cfg-m3-wlc">
+                    <option value="psk">WPA2-PSK Sederhana</option>
+                    <option value="radius">WPA2-Enterprise (RADIUS / AAA Server DMZ)</option>
+                </select>
+            </div>
+            <div class="form-grid">
+                <label>Voice VLAN & CME IP Telephony (Cabang-A)</label>
+                <select id="cfg-m3-voip">
+                    <option value="disabled">Disabled</option>
+                    <option value="enabled">Enabled (Auto Provisioning Ext 1001-1005)</option>
+                </select>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn-secondary" onclick="closeModal('mod3-modal')">Batal</button>
+            <button class="btn-cisco" onclick="saveMod3()">Simpan & Terapkan</button>
+        </div>
+    </div>
+</div>
+
+<!-- MODAL MODUL 4 -->
+<div class="modal-overlay" id="mod4-modal">
+    <div class="cisco-modal">
+        <div class="modal-header">
+            <h3><i class="fa-solid fa-shield-halved"></i> Modul 4: DMZ Server Farm, NAT & Domain Publishing</h3>
+            <button class="modal-close" onclick="closeModal('mod4-modal')">&times;</button>
+        </div>
+        <div class="modal-body">
+            <div class="badge-info">Konfigurasi Dynamic PAT, Static NAT Server Web DMZ, dan DNS Domain.</div>
+            <div class="form-grid">
+                <label>Dynamic NAT / PAT (Trafik Outgoing Internal)</label>
+                <select id="cfg-m4-pat">
+                    <option value="false">Disabled</option>
+                    <option value="true">Enabled (PAT Outside Interface Edge Router)</option>
+                </select>
+            </div>
+            <div class="form-grid">
+                <label>Static NAT Public IP (DMZ Web Server)</label>
+                <input type="text" id="cfg-m4-staticnat" placeholder="Contoh IP Public: 200.1.1.5">
+            </div>
+            <div class="form-grid">
+                <label>Publikasi Domain DNS Server</label>
+                <input type="text" id="cfg-m4-domain" placeholder="Contoh Domain: www.perusahaan-pro.id">
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn-secondary" onclick="closeModal('mod4-modal')">Batal</button>
+            <button class="btn-cisco" onclick="saveMod4()">Simpan & Terapkan</button>
+        </div>
+    </div>
+</div>
+
+<!-- MODAL MODUL 5 -->
+<div class="modal-overlay" id="mod5-modal">
+    <div class="cisco-modal">
+        <div class="modal-header">
+            <h3><i class="fa-solid fa-user-lock"></i> Modul 5: Extended ACL & Hardening Challenge</h3>
+            <button class="modal-close" onclick="closeModal('mod5-modal')">&times;</button>
+        </div>
+        <div class="modal-body">
+            <div class="badge-info">Menerapkan Extended ACL pemblokiran trafik Guest dan Quality of Service (QoS).</div>
+            <div class="form-grid">
+                <label>Extended ACL Rule (VLAN Guest -> DMZ Server)</label>
+                <select id="cfg-m5-acl">
+                    <option value="allow">Allow All (Unsecured)</option>
+                    <option value="deny">Deny HTTP/FTP Guest to DMZ & Core LAN</option>
+                </select>
+            </div>
+            <div class="form-grid">
+                <label>QoS Tagging Prioritas Trafik VoIP</label>
+                <select id="cfg-m5-qos">
+                    <option value="false">Disabled</option>
+                    <option value="true">Enabled (UDP Port 2000 & 16384-32767 Prioritized)</option>
+                </select>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn-secondary" onclick="closeModal('mod5-modal')">Batal</button>
+            <button class="btn-cisco" onclick="saveMod5()">Simpan & Terapkan</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    // System Master Database State
+    let masterDB = {
+        mod1: { lacp: 'none', pvst: 'default', hsrp: '' },
+        mod2: { ospf: 'none', summary: 'false' },
+        mod3: { wlc: 'psk', voip: 'disabled' },
+        mod4: { pat: 'false', staticnat: '', domain: '' },
+        mod5: { acl: 'allow', qos: 'false', disasterPassed: false }
+    };
+
+    function openModal(id) { document.getElementById(id).classList.add('active'); }
+    function closeModal(id) { document.getElementById(id).classList.remove('active'); }
+
+    function getTimestamp() {
+        let now = new Date();
+        return now.toLocaleTimeString('id-ID', { hour12: false });
+    }
+
+    function logTerminal(msg, cls="") {
+        let box = document.getElementById('terminal-output');
+        let time = getTimestamp();
+        box.innerHTML += `<div class="${cls}"><span class="terminal-time">[${time}]</span> ${msg}</div>`;
+        box.scrollTop = box.scrollHeight;
+    }
+
+    // Modal Saver Functions
+    function saveMod1() {
+        masterDB.mod1.lacp = document.getElementById('cfg-m1-lacp').value;
+        masterDB.mod1.pvst = document.getElementById('cfg-m1-pvst').value;
+        masterDB.mod1.hsrp = document.getElementById('cfg-m1-hsrp').value.trim();
+        logTerminal(`[MODUL 1] Saved: EtherChannel ${masterDB.mod1.lacp.toUpperCase()}, PVST+ ${masterDB.mod1.pvst}, VIP: ${masterDB.mod1.hsrp || 'None'}`, 'terminal-sys');
+        closeModal('mod1-modal'); evaluateMaster();
+    }
+
+    function saveMod2() {
+        masterDB.mod2.ospf = document.getElementById('cfg-m2-ospf').value;
+        masterDB.mod2.summary = document.getElementById('cfg-m2-summary').value;
+        logTerminal(`[MODUL 2] Saved: OSPF Topology Mode: ${masterDB.mod2.ospf}, Summarization: ${masterDB.mod2.summary}`, 'terminal-sys');
+        closeModal('mod2-modal'); evaluateMaster();
+    }
+
+    function saveMod3() {
+        masterDB.mod3.wlc = document.getElementById('cfg-m3-wlc').value;
+        masterDB.mod3.voip = document.getElementById('cfg-m3-voip').value;
+        logTerminal(`[MODUL 3] Saved: WLC Security: ${masterDB.mod3.wlc.toUpperCase()}, CME IP Telephony: ${masterDB.mod3.voip}`, 'terminal-sys');
+        closeModal('mod3-modal'); evaluateMaster();
+    }
+
+    function saveMod4() {
+        masterDB.mod4.pat = document.getElementById('cfg-m4-pat').value;
+        masterDB.mod4.staticnat = document.getElementById('cfg-m4-staticnat').value.trim();
+        masterDB.mod4.domain = document.getElementById('cfg-m4-domain').value.trim();
+        logTerminal(`[MODUL 4] Saved: Dynamic PAT: ${masterDB.mod4.pat}, Static NAT IP: ${masterDB.mod4.staticnat || 'None'}, Domain: ${masterDB.mod4.domain || 'None'}`, 'terminal-sys');
+        closeModal('mod4-modal'); evaluateMaster();
+    }
+
+    function saveMod5() {
+        masterDB.mod5.acl = document.getElementById('cfg-m5-acl').value;
+        masterDB.mod5.qos = document.getElementById('cfg-m5-qos').value;
+        logTerminal(`[MODUL 5] Saved: Extended ACL: ${masterDB.mod5.acl.toUpperCase()}, QoS Tagging: ${masterDB.mod5.qos}`, 'terminal-sys');
+        closeModal('mod5-modal'); evaluateMaster();
+    }
+
+    function updateChecklist(key, isDone) {
+        let el = document.getElementById(`chk-${key}`);
+        let ic = document.getElementById(`icon-${key}`);
+        if(isDone) {
+            el.classList.add('completed'); ic.className = 'fa-solid fa-circle-check';
+        } else {
+            el.classList.remove('completed'); ic.className = 'fa-regular fa-circle-check';
+        }
+    }
+
+    function updateNode(nodePre, isOk) {
+        let badge = document.getElementById(`${nodePre}-badge`);
+        if(badge) {
+            if(isOk) {
+                badge.className = 'status-badge online';
+                badge.innerHTML = '<i class="fa-solid fa-check"></i>';
+            } else {
+                badge.className = 'status-badge';
+                badge.innerHTML = '!';
+            }
+        }
+    }
+
+    function getLineHtml(id1, id2, statusClass) {
+        const e1 = document.getElementById(id1).getBoundingClientRect();
+        const e2 = document.getElementById(id2).getBoundingClientRect();
+        const cvs = document.getElementById('canvas-area').getBoundingClientRect();
+        const x1 = e1.left - cvs.left + e1.width/2, y1 = e1.top - cvs.top + e1.height/2;
+        const x2 = e2.left - cvs.left + e2.width/2, y2 = e2.top - cvs.top + e2.height/2;
+        return `<line class="wired-line ${statusClass}" x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" />`;
+    }
+
+    // Evaluation Engine
+    function evaluateMaster() {
+        let totalScore = 0;
+
+        // Modul 1
+        let m1Ok = (masterDB.mod1.lacp === 'lacp' && masterDB.mod1.pvst === 'correct' && masterDB.mod1.hsrp === '192.168.10.254');
+        updateChecklist('mod1', m1Ok);
+        if(m1Ok) totalScore += 20;
+        updateNode('swcore-a', m1Ok);
+        updateNode('swcore-b', m1Ok);
+        updateNode('swacc1', m1Ok);
+
+        // Modul 2
+        let m2Ok = (masterDB.mod2.ospf === 'correct' && masterDB.mod2.summary === 'true');
+        updateChecklist('mod2', m2Ok);
+        if(m2Ok) totalScore += 20;
+        document.getElementById('lbl-rcore1').innerText = m2Ok ? "OSPF Area 0 (Full)" : "OSPF: Down";
+        document.getElementById('lbl-rcore2').innerText = m2Ok ? "OSPF Area 0 (Full)" : "OSPF: Down";
+        updateNode('rcore1', m2Ok);
+        updateNode('rcore2', m2Ok);
+        updateNode('rdist-a', m2Ok);
+        updateNode('rdist-b', m2Ok);
+        updateNode('swacc3', m2Ok);
+
+        // Modul 3
+        let m3Ok = (masterDB.mod3.wlc === 'radius' && masterDB.mod3.voip === 'enabled');
+        updateChecklist('mod3', m3Ok);
+        if(m3Ok) totalScore += 20;
+        document.getElementById('lbl-wlc').innerText = m3Ok ? "SSID: Enterprise (RADIUS)" : "SSID: Unconfigured";
+        updateNode('wlc', m3Ok);
+        updateNode('swacc2', m3Ok);
+
+        // Modul 4
+        let m4Ok = (masterDB.mod4.pat === 'true' && masterDB.mod4.staticnat === '200.1.1.5' && masterDB.mod4.domain === 'www.perusahaan-pro.id');
+        updateChecklist('mod4', m4Ok);
+        if(m4Ok) totalScore += 20;
+        document.getElementById('lbl-edge').innerText = m4Ok ? "PAT & Static NAT Active" : "NAT: Unconfigured";
+        document.getElementById('lbl-dmz').innerText = m4Ok ? "www.perusahaan-pro.id" : "Web: 192.168.100.10";
+        updateNode('edge', m4Ok);
+        updateNode('dmz', m4Ok);
+
+        // Modul 5
+        let m5Ok = (masterDB.mod5.acl === 'deny' && masterDB.mod5.qos === 'true' && masterDB.mod5.disasterPassed);
+        updateChecklist('mod5', m5Ok);
+        if(m5Ok) totalScore += 20;
+        updateNode('swacc4', m5Ok);
+
+        document.getElementById('total-score').innerText = `${totalScore} / 100`;
+        renderSVG(m1Ok, m2Ok, m4Ok);
+    }
+
+    function renderSVG(m1Ok, m2Ok, m4Ok) {
+        let svg = '';
+        svg += getLineHtml('isp-node', 'edge-node', 'active');
+        svg += getLineHtml('edge-node', 'dmz-node', m4Ok ? 'active' : '');
+        svg += getLineHtml('edge-node', 'wlc-node', 'active');
+        
+        svg += getLineHtml('edge-node', 'r-core1-node', m2Ok ? 'active' : '');
+        svg += getLineHtml('edge-node', 'r-core2-node', m2Ok ? 'active' : '');
+        
+        svg += getLineHtml('r-core1-node', 'r-core2-node', m2Ok ? 'active' : '');
+        svg += getLineHtml('r-core1-node', 'r-dist-a-node', m2Ok ? 'active' : '');
+        svg += getLineHtml('r-core2-node', 'r-dist-b-node', m2Ok ? 'active' : '');
+
+        svg += getLineHtml('r-dist-a-node', 'sw-core-a-node', 'active');
+        svg += getLineHtml('r-dist-b-node', 'sw-core-b-node', 'active');
+
+        svg += getLineHtml('sw-core-a-node', 'sw-core-b-node', m1Ok ? 'etherchannel' : 'active');
+
+        svg += getLineHtml('sw-core-a-node', 'sw-acc1-node', 'active');
+        svg += getLineHtml('sw-core-a-node', 'sw-acc2-node', 'active');
+        svg += getLineHtml('sw-core-b-node', 'sw-acc3-node', 'active');
+        svg += getLineHtml('sw-core-b-node', 'sw-acc4-node', 'active');
+
+        document.getElementById('svg-connections').innerHTML = svg;
+    }
+
+    function runFullDiagnostic() {
+        logTerminal(`\n> MENJALANKAN AUDIT DIAGNOSTIK SYSTEM MASTER...`, 'terminal-sys');
+        
+        setTimeout(() => {
+            if(masterDB.mod1.lacp === 'lacp') logTerminal(`[PASS] EtherChannel LACP 3-Link Active Channel-Group 1.`, 'terminal-success');
+            else logTerminal(`[FAIL] EtherChannel LACP belum dikonfigurasi.`, 'terminal-fail');
+        }, 200);
+
+        setTimeout(() => {
+            if(masterDB.mod2.ospf === 'correct') logTerminal(`[PASS] OSPF Neighbor Full Mesh (Area 0, 10, 20) Established.`, 'terminal-success');
+            else logTerminal(`[FAIL] OSPF Multi-Area belum dikonfigurasi secara presisi.`, 'terminal-fail');
+        }, 400);
+
+        setTimeout(() => {
+            if(masterDB.mod4.domain === 'www.perusahaan-pro.id' && masterDB.mod4.staticnat === '200.1.1.5') {
+                logTerminal(`[PASS] HTTP GET www.perusahaan-pro.id [200.1.1.5] Static NAT translation OK!`, 'terminal-success');
+            } else {
+                logTerminal(`[FAIL] Static NAT / Domain DMZ Server Unreachable dari Internet.`, 'terminal-fail');
+            }
+        }, 600);
+    }
+
+    function triggerDisasterChallenge() {
+        logTerminal(`\n[DISASTER CHALLENGE] MEMATIKAN LINK UTAMA ETHERCHANNEL & CORE ROUTER 1...`, 'terminal-fail');
+        document.getElementById('r-core1-node').classList.add('offline');
+        
+        let start = Date.now();
+        setTimeout(() => {
+            let duration = ((Date.now() - start)/1000).toFixed(1);
+            if(masterDB.mod1.hsrp === '192.168.10.254' && masterDB.mod2.ospf === 'correct') {
+                masterDB.mod5.disasterPassed = true;
+                logTerminal(`[FAILOVER SUCCESS] Service Reconverged dalam ${duration} detik (< 30s Target)!`, 'terminal-success');
+                logTerminal(`[HSRP] Switch Core-B/Backup Router mengambil alih virtual gateway.`, 'terminal-warn');
+            } else {
+                masterDB.mod5.disasterPassed = false;
+                logTerminal(`[DISASTER CRITICAL] Failover Gagal! Network Loop atau HSRP Gateway down.`, 'terminal-fail');
+            }
+            document.getElementById('r-core1-node').classList.remove('offline');
+            evaluateMaster();
+        }, 1200);
+    }
+
+    function resetAllConfigs() {
+        masterDB = {
+            mod1: { lacp: 'none', pvst: 'default', hsrp: '' },
+            mod2: { ospf: 'none', summary: 'false' },
+            mod3: { wlc: 'psk', voip: 'disabled' },
+            mod4: { pat: 'false', staticnat: '', domain: '' },
+            mod5: { acl: 'allow', qos: 'false', disasterPassed: false }
+        };
+        logTerminal('[SYSTEM] Seluruh konfigurasi topologi direset ke standar.', 'terminal-warn');
+        evaluateMaster();
+    }
+
+    let resizeTimer;
+    window.addEventListener('resize', () => {
+        clearTimeout(resizeTimer);
+        resizeTimer = setTimeout(() => evaluateMaster(), 100);
+    });
+
+    setTimeout(() => {
+        logTerminal('[SYSTEM] Inisialisasi Topology Master Enterprise 35+ Devices...', 'terminal-sys');
+        evaluateMaster();
+    }, 300);
+</script>
+</body>
+</html>

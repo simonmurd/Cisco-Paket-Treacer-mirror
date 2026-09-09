@@ -1,0 +1,761 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Praktikum SD-WAN Enterprise & Zero Trust Security Architecture</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+
+    <style>
+        :root {
+            --cisco-blue: #005073;
+            --cisco-light-blue: #0284c7;
+            --cisco-accent: #06b6d4;
+            --bg-light: #f8fafc;
+            --card-bg: #ffffff;
+            --text-dark: #0f172a;
+            --text-muted: #64748b;
+            --border-color: #e2e8f0;
+            --success-color: #10b981;
+            --danger-color: #ef4444;
+            --warning-color: #f59e0b;
+            --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+            --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.05);
+            --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.05);
+            --transition-smooth: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { background-color: var(--bg-light); color: var(--text-dark); font-family: 'Inter', sans-serif; padding: 32px 16px; line-height: 1.5; -webkit-font-smoothing: antialiased; }
+        
+        .container { 
+            max-width: 1360px; 
+            margin: 0 auto; 
+            background-color: var(--card-bg); 
+            border-radius: 16px; 
+            box-shadow: var(--shadow-lg); 
+            overflow: hidden; 
+            border: 1px solid var(--border-color);
+        }
+        
+        /* HEADER */
+        header { 
+            background: linear-gradient(135deg, #002b40 0%, var(--cisco-blue) 100%); 
+            color: #fff; 
+            padding: 24px 32px; 
+            display: flex; 
+            justify-content: space-between; 
+            align-items: center; 
+            border-bottom: 3px solid var(--cisco-accent);
+            flex-wrap: wrap;
+            gap: 20px;
+        }
+        .header-title { display: flex; align-items: center; gap: 16px; }
+        .header-title i { font-size: 28px; color: var(--cisco-accent); background: rgba(255,255,255,0.05); padding: 14px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.1); }
+        .header-title h1 { font-size: 20px; font-weight: 700; margin-bottom: 4px; letter-spacing: -0.02em; }
+        .header-title p { font-size: 13px; color: #cbd5e1; font-weight: 400; }
+
+        .score-box { 
+            background: rgba(15, 23, 42, 0.4); 
+            padding: 12px 24px; 
+            border-radius: 12px; 
+            border: 1px solid rgba(255,255,255,0.1); 
+            text-align: right; 
+            backdrop-filter: blur(8px);
+        }
+        .score-title { font-size: 11px; text-transform: uppercase; color: #94a3b8; font-weight: 700; letter-spacing: 0.05em; }
+        .score-value { font-size: 26px; font-weight: 700; color: var(--success-color); font-family: 'JetBrains Mono', monospace; margin-top: 2px; }
+
+        /* TOPOLOGY AREA */
+        .topology-section { padding: 0; background-color: #ffffff; border-bottom: 1px solid var(--border-color); }
+        .section-header { padding: 16px 32px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); background: #f8fafc; }
+        .section-header-title { font-weight: 600; color: var(--text-dark); font-size: 14px; display: flex; align-items: center; gap: 10px; }
+        .section-header-title i { color: var(--cisco-blue); font-size: 18px; }
+        
+        .topology-wrapper { width: 100%; overflow-x: auto; }
+        .topology-canvas { position: relative; height: 620px; min-width: 980px; background-color: #f8fafc; background-image: radial-gradient(#cbd5e1 1px, transparent 1px); background-size: 28px 28px; overflow: hidden; }
+        .connections-svg { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 1; }
+        
+        /* CABLES / TUNNELS */
+        .wired-line { stroke: #cbd5e1; stroke-width: 3; transition: stroke 0.4s ease, opacity 0.4s ease; stroke-linecap: round; }
+        .wired-line.active { stroke: var(--success-color); stroke-width: 3.5; }
+        .wired-line.sdwan-overlay { stroke: var(--cisco-accent); stroke-width: 4; stroke-dasharray: 8 4; animation: flowData 1.5s linear infinite; }
+        .wired-line.mpls-line { stroke: #0284c7; stroke-width: 3; }
+        .wired-line.blocked { stroke: var(--danger-color); stroke-dasharray: 6 6; stroke-width: 3; }
+        .wired-line.offline { stroke: var(--danger-color); stroke-width: 2; opacity: 0.3; }
+        
+        @keyframes flowData { to { stroke-dashoffset: -24; } }
+
+        /* DEVICES */
+        .device-node { position: absolute; z-index: 2; display: flex; flex-direction: column; align-items: center; cursor: pointer; user-select: none; transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1); }
+        .device-node:hover { transform: translateY(-5px); }
+        .device-node.offline { opacity: 0.5; filter: grayscale(100%); }
+        
+        .device-icon-box { width: 62px; height: 62px; background-color: #fff; border: 2px solid var(--border-color); border-radius: 14px; display: flex; justify-content: center; align-items: center; box-shadow: var(--shadow-sm); position: relative; transition: var(--transition-smooth); }
+        .device-icon-box i { font-size: 24px; color: var(--text-muted); transition: color 0.3s ease; }
+        .device-node:hover .device-icon-box { border-color: var(--cisco-light-blue); box-shadow: 0 10px 15px -3px rgba(2, 132, 199, 0.15); }
+        
+        .device-node.configured .device-icon-box { border-color: var(--cisco-blue); background: #f0f9ff; }
+        .device-node.configured .device-icon-box i { color: var(--cisco-blue); }
+        
+        .controller-node .device-icon-box { border-color: #8b5cf6; }
+        .controller-node.configured .device-icon-box { border-color: #7c3aed; background: #f5f3ff; }
+        .controller-node.configured .device-icon-box i { color: #7c3aed; }
+
+        .device-label { margin-top: 8px; font-size: 11px; font-weight: 600; background: rgba(255,255,255,0.95); padding: 5px 10px; border: 1px solid var(--border-color); border-radius: 8px; text-align: center; line-height: 1.3; box-shadow: var(--shadow-sm); backdrop-filter: blur(4px); }
+        .device-ip { font-size: 10px; color: var(--text-muted); font-weight: 500; display: block; margin-top: 2px; font-family: 'JetBrains Mono', monospace; }
+        .device-node.configured .device-ip { color: var(--cisco-light-blue); font-weight: 600; }
+        
+        .status-badge { position: absolute; top: -8px; right: -8px; width: 22px; height: 22px; border-radius: 50%; background-color: var(--danger-color); border: 2px solid #fff; display: flex; align-items: center; justify-content: center; font-size: 10px; color: #fff; font-weight: bold; box-shadow: var(--shadow-sm); transition: var(--transition-smooth); }
+        .status-badge.online { background-color: var(--success-color); }
+        .status-badge.standby { background-color: var(--warning-color); }
+
+        /* Coordinates */
+        #ctrl-node { top: 5%; left: 50%; transform: translateX(-50%); }
+        #mpls-node { top: 23%; left: 30%; transform: translateX(-50%); }
+        #inet-node { top: 23%; left: 70%; transform: translateX(-50%); }
+        #vhq-node { top: 43%; left: 30%; transform: translateX(-50%); }
+        #vcab-node { top: 43%; left: 70%; transform: translateX(-50%); }
+        #core-node { top: 63%; left: 30%; transform: translateX(-50%); }
+        #swcab-node { top: 63%; left: 70%; transform: translateX(-50%); }
+        #ztna-node { top: 83%; left: 20%; transform: translateX(-50%); }
+        #pos-node { top: 83%; left: 60%; transform: translateX(-50%); }
+        #rogue-node { top: 83%; left: 85%; transform: translateX(-50%); }
+
+        /* BOTTOM SECTION */
+        .lkpd-body { padding: 32px; display: grid; grid-template-columns: 1.2fr 1fr; gap: 32px; background: #fff; }
+        .card { background: #fff; border: 1px solid var(--border-color); border-radius: 16px; padding: 28px; box-shadow: var(--shadow-sm); }
+        .card-title { font-size: 15px; font-weight: 700; color: var(--text-dark); margin-bottom: 20px; display: flex; align-items: center; gap: 10px; }
+        .card-title i { color: var(--cisco-blue); font-size: 18px; }
+        
+        /* CHECKLIST */
+        .checklist-group { display: flex; flex-direction: column; gap: 14px; }
+        .checklist-item { display: flex; flex-direction: column; background: #f8fafc; border: 1px solid var(--border-color); padding: 16px 18px; border-radius: 12px; transition: var(--transition-smooth); gap: 6px; }
+        .checklist-item:hover { border-color: #cbd5e1; box-shadow: var(--shadow-sm); }
+        .checklist-item.completed { background: #f0fdf4; border-color: #bbf7d0; }
+        
+        .item-header { display: flex; align-items: center; justify-content: space-between; }
+        .item-info { display: flex; align-items: center; gap: 12px; font-size: 13.5px; font-weight: 600; color: var(--text-dark); }
+        .item-info i { font-size: 18px; color: var(--text-muted); transition: 0.3s; }
+        .checklist-item.completed .item-info i { color: var(--success-color); }
+        .item-points { font-size: 11px; font-weight: 700; background: #e2e8f0; color: #475569; padding: 3px 10px; border-radius: 20px; }
+        .checklist-item.completed .item-points { background: #dcfce7; color: #15803d; }
+        .item-desc { font-size: 12.5px; color: var(--text-muted); margin-left: 30px; line-height: 1.5; }
+
+        /* TERMINAL */
+        .terminal-container { border-radius: 12px; overflow: hidden; box-shadow: var(--shadow-md); border: 1px solid #1e293b; background: #0f172a; }
+        .terminal-header { background: #1e293b; padding: 12px 20px; display: flex; align-items: center; gap: 8px; }
+        .terminal-dot { width: 11px; height: 11px; border-radius: 50%; }
+        .terminal-dot.red { background: #ef4444; }
+        .terminal-dot.yellow { background: #f59e0b; }
+        .terminal-dot.green { background: #10b981; }
+        .terminal-title { margin-left: auto; margin-right: auto; color: #94a3b8; font-size: 12px; font-weight: 500; font-family: 'Inter', sans-serif; padding-right: 35px; }
+        
+        .terminal-box { color: #e2e8f0; font-family: 'JetBrains Mono', monospace; font-size: 12px; padding: 18px; height: 260px; overflow-y: auto; line-height: 1.7; }
+        .terminal-box::-webkit-scrollbar { width: 6px; }
+        .terminal-box::-webkit-scrollbar-track { background: #0f172a; }
+        .terminal-box::-webkit-scrollbar-thumb { background: #334155; border-radius: 3px; }
+
+        .terminal-time { color: #64748b; margin-right: 8px; }
+        .terminal-success { color: #34d399; } 
+        .terminal-fail { color: #f87171; } 
+        .terminal-warn { color: #fbbf24; }
+        .terminal-sys { color: #38bdf8; }
+        
+        /* BUTTONS */
+        .ping-controls { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 20px; }
+        button { padding: 11px 16px; font-size: 13px; border-radius: 8px; font-weight: 600; cursor: pointer; transition: var(--transition-smooth); display: flex; align-items: center; justify-content: center; gap: 8px; font-family: 'Inter', sans-serif; outline: none; border: 1px solid transparent; }
+        button:active { transform: scale(0.98); }
+        
+        .btn-cisco { background: var(--cisco-blue); color: #fff; }
+        .btn-cisco:hover { background: #003b54; box-shadow: var(--shadow-md); }
+        .btn-secondary { background: #fff; color: var(--text-dark); border-color: var(--border-color); }
+        .btn-secondary:hover { background: #f8fafc; border-color: #cbd5e1; }
+        .btn-danger { background: var(--danger-color); color: #fff; }
+        .btn-danger:hover { background: #dc2626; box-shadow: var(--shadow-md); }
+        .btn-warn { background: var(--warning-color); color: #fff; }
+        .btn-warn:hover { background: #d97706; }
+
+        /* MODALS */
+        .modal-overlay { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(15,23,42,0.6); backdrop-filter: blur(8px); display: flex; justify-content: center; align-items: center; opacity: 0; pointer-events: none; transition: opacity 0.3s ease; z-index: 100; padding: 16px; }
+        .modal-overlay.active { opacity: 1; pointer-events: auto; }
+        .modal-overlay.active .cisco-modal { transform: scale(1) translateY(0); opacity: 1; }
+        
+        .cisco-modal { background: #fff; width: 100%; max-width: 480px; border-radius: 16px; overflow: hidden; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.3); transform: scale(0.95) translateY(10px); opacity: 0; transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1); }
+        .modal-header { background: #002b40; color: #fff; padding: 18px 24px; display: flex; justify-content: space-between; align-items: center; border-bottom: 3px solid var(--cisco-light-blue); }
+        .modal-header h3 { font-size: 15px; font-weight: 600; display: flex; align-items: center; gap: 10px; }
+        .modal-close { background: none; border: none; color: rgba(255,255,255,0.6); cursor: pointer; font-size: 22px; line-height: 1; padding: 4px; transition: var(--transition-smooth); }
+        .modal-close:hover { color: #fff; transform: rotate(90deg); }
+        
+        .modal-body { padding: 24px; max-height: 70vh; overflow-y: auto; }
+        .form-grid { display: flex; flex-direction: column; gap: 8px; margin-bottom: 18px; }
+        .form-grid label { font-size: 12.5px; font-weight: 600; color: var(--text-dark); }
+        .form-grid input, .form-grid select { padding: 11px 14px; border: 1px solid var(--border-color); border-radius: 8px; font-size: 13.5px; font-family: inherit; transition: var(--transition-smooth); background: #f8fafc; color: var(--text-dark); width: 100%; }
+        .form-grid input:focus, .form-grid select:focus { outline: none; border-color: var(--cisco-light-blue); background: #fff; box-shadow: 0 0 0 4px rgba(2, 132, 199, 0.1); }
+        
+        .modal-footer { padding: 18px 24px; background: #f8fafc; display: flex; justify-content: flex-end; gap: 10px; border-top: 1px solid var(--border-color); }
+        .badge-info { font-size: 12px; background: #f0f9ff; color: #0369a1; padding: 12px 14px; border-radius: 8px; margin-bottom: 20px; line-height: 1.5; border-left: 4px solid #0284c7; }
+
+        @media (max-width: 992px) {
+            .lkpd-body { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <header>
+        <div class="header-title">
+            <i class="fa-solid fa-shield-halved"></i>
+            <div>
+                <h1>Enterprise SD-WAN Migration & Zero Trust Security Architecture</h1>
+                <p>Simulasi Transformasi Digital Jaringan Ritel Multi-Cabang (Expert / Specialist - 240 Menit)</p>
+            </div>
+        </div>
+        <div class="score-box">
+            <div class="score-title">Nilai Evaluasi Lab</div>
+            <div class="score-value" id="total-score">0 / 100</div>
+        </div>
+    </header>
+
+    <div class="topology-section">
+        <div class="section-header">
+            <span class="section-header-title"><i class="fa-solid fa-network-wired"></i> Interaksi Topologi Jaringan (Klik Perangkat untuk Konfigurasi)</span>
+            <button class="btn-secondary" style="font-size: 12px; padding: 6px 14px;" onclick="resetAllConfigs()">
+                <i class="fa-solid fa-rotate-right"></i> Reset Lab
+            </button>
+        </div>
+        
+        <div class="topology-wrapper">
+            <div class="topology-canvas" id="canvas-area">
+                <svg class="connections-svg" id="svg-connections"></svg>
+
+                <!-- Controllers Node -->
+                <div class="device-node controller-node" id="ctrl-node" onclick="openModal('ctrl-modal')">
+                    <div class="device-icon-box">
+                        <i class="fa-solid fa-server"></i>
+                        <div class="status-badge" id="ctrl-badge">!</div>
+                    </div>
+                    <div class="device-label">SD-WAN Controllers<br><span class="device-ip" id="lbl-ctrl">vManage / vSmart / vBond</span></div>
+                </div>
+
+                <!-- WAN Clouds -->
+                <div class="device-node" id="mpls-node">
+                    <div class="device-icon-box"><i class="fa-solid fa-cloud"></i></div>
+                    <div class="device-label">MPLS Cloud<br><span class="device-ip">Private Transport</span></div>
+                </div>
+
+                <div class="device-node" id="inet-node">
+                    <div class="device-icon-box"><i class="fa-solid fa-globe"></i></div>
+                    <div class="device-label">Public Internet<br><span class="device-ip">Direct Internet Access</span></div>
+                </div>
+
+                <!-- Edge Routers -->
+                <div class="device-node" id="vhq-node" onclick="openModal('aar-modal')">
+                    <div class="device-icon-box">
+                        <i class="fa-solid fa-router"></i>
+                        <div class="status-badge" id="vhq-badge">!</div>
+                    </div>
+                    <div class="device-label">vEdge HQ Cluster (2 Unit)<br><span class="device-ip" id="lbl-vhq">Dual WAN (MPLS + Inet)</span></div>
+                </div>
+
+                <div class="device-node" id="vcab-node" onclick="openModal('zbf-modal')">
+                    <div class="device-icon-box">
+                        <i class="fa-solid fa-router"></i>
+                        <div class="status-badge" id="vcab-badge">!</div>
+                    </div>
+                    <div class="device-label">vEdge Cabang A & B<br><span class="device-ip" id="lbl-vcab">ZBF & URL Filter: Off</span></div>
+                </div>
+
+                <!-- Switches -->
+                <div class="device-node" id="core-node">
+                    <div class="device-icon-box"><i class="fa-solid fa-layer-group"></i></div>
+                    <div class="device-label">L3 Core SW HQ<br><span class="device-ip">Stacking / VRRP</span></div>
+                </div>
+
+                <div class="device-node" id="swcab-node" onclick="openModal('ztna-modal')">
+                    <div class="device-icon-box">
+                        <i class="fa-solid fa-sitemap"></i>
+                        <div class="status-badge" id="swcab-badge">!</div>
+                    </div>
+                    <div class="device-label">Access Switches Cabang<br><span class="device-ip" id="lbl-swcab">802.1X / ZTNA: Off</span></div>
+                </div>
+
+                <!-- Identity & Endpoints -->
+                <div class="device-node" id="ztna-node">
+                    <div class="device-icon-box"><i class="fa-solid fa-user-shield"></i></div>
+                    <div class="device-label">ZTNA & RADIUS/MFA Server<br><span class="device-ip">10.10.10.50</span></div>
+                </div>
+
+                <div class="device-node" id="pos-node">
+                    <div class="device-icon-box"><i class="fa-solid fa-cash-register"></i></div>
+                    <div class="device-label">Terminal POS / Kasir<br><span class="device-ip">VLAN 10 (Kasir)</span></div>
+                </div>
+
+                <div class="device-node" id="rogue-node">
+                    <div class="device-icon-box"><i class="fa-solid fa-laptop-code"></i></div>
+                    <div class="device-label">Rogue Laptop Test<br><span class="device-ip">Unauthenticated</span></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="lkpd-body">
+        <div class="card">
+            <div class="card-title"><i class="fa-solid fa-list-check"></i> Rubrik Penilaian Modul (Total 100 Point)</div>
+            <div class="checklist-group">
+                <div class="checklist-item" id="chk-mod1">
+                    <div class="item-header">
+                        <div class="item-info"><i class="fa-regular fa-circle-check" id="icon-mod1"></i><span>Modul 1: SD-WAN Controller & OMP Setup</span></div>
+                        <span class="item-points">25 Poin</span>
+                    </div>
+                    <div class="item-desc">Autentikasi sertifikat vManage/vSmart valid dan OMP peering terjalin di SD-WAN Fabric.</div>
+                </div>
+
+                <div class="checklist-item" id="chk-mod2">
+                    <div class="item-header">
+                        <div class="item-info"><i class="fa-regular fa-circle-check" id="icon-mod2"></i><span>Modul 2: Dynamic Path & AAR Policy</span></div>
+                        <span class="item-points">20 Poin</span>
+                    </div>
+                    <div class="item-desc">AAR memprioritaskan POS via MPLS, Web via DIA, serta failover ke IPsec Internet jika loss > 2%.</div>
+                </div>
+
+                <div class="checklist-item" id="chk-mod3">
+                    <div class="item-header">
+                        <div class="item-info"><i class="fa-regular fa-circle-check" id="icon-mod3"></i><span>Modul 3: ZTNA & 802.1X Port Security</span></div>
+                        <span class="item-points">25 Poin</span>
+                    </div>
+                    <div class="item-desc">802.1X RADIUS aktif di access switch dan Micro-Segmentation mengisolasi VLAN POS secara total.</div>
+                </div>
+
+                <div class="checklist-item" id="chk-mod4">
+                    <div class="item-header">
+                        <div class="item-info"><i class="fa-regular fa-circle-check" id="icon-mod4"></i><span>Modul 4: ZBF & Cloud Security Integration</span></div>
+                        <span class="item-points">15 Poin</span>
+                    </div>
+                    <div class="item-desc">Zone-Based Firewall membatasi POS HANYA ke port HTTPS (443) Payment Gateway & URL Filter aktif.</div>
+                </div>
+
+                <div class="checklist-item" id="chk-mod5">
+                    <div class="item-header">
+                        <div class="item-info"><i class="fa-regular fa-circle-check" id="icon-mod5"></i><span>Modul 5: Fabric Outage & ZTNA Breach Challenge</span></div>
+                        <span class="item-points">15 Poin</span>
+                    </div>
+                    <div class="item-desc">Data plane bertahan saat vSmart down (Graceful Restart) & Rogue Device terblokir (Err-Disable).</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-title"><i class="fa-solid fa-terminal"></i> Live Security Log & Audit Terminal</div>
+            
+            <div class="terminal-container">
+                <div class="terminal-header">
+                    <div class="terminal-dot red"></div>
+                    <div class="terminal-dot yellow"></div>
+                    <div class="terminal-dot green"></div>
+                    <div class="terminal-title">sdwan-fabric-console v18.4</div>
+                </div>
+                <div class="terminal-box" id="terminal-output">
+                    <!-- Logs dynamically appended -->
+                </div>
+            </div>
+
+            <div class="ping-controls">
+                <button class="btn-cisco" onclick="runAARTest()"><i class="fa-solid fa-gauge-high"></i> Uji SLA AAR Failover</button>
+                <button class="btn-warn" id="btn-vsmart" onclick="toggleVSmart()"><i class="fa-solid fa-power-off"></i> Toggle vSmart Controller</button>
+                <button class="btn-danger" style="grid-column: span 2;" onclick="runRogueAttack()"><i class="fa-solid fa-user-ninja"></i> Simulasi Rogue Device Attack (ZTNA Breach Test)</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- MODAL 1: CONTROLLER -->
+<div class="modal-overlay" id="ctrl-modal">
+    <div class="cisco-modal">
+        <div class="modal-header">
+            <h3><i class="fa-solid fa-server"></i> Modul 1: SD-WAN Controller Onboarding</h3>
+            <button class="modal-close" onclick="closeModal('ctrl-modal')">&times;</button>
+        </div>
+        <div class="modal-body">
+            <div class="badge-info">Atur parameter dasar Control Plane untuk mengaktifkan Overlay Management Protocol (OMP).</div>
+            <div class="form-grid">
+                <label>vManage / vSmart Enterprise Root CA Certificate</label>
+                <select id="cfg-ctrl-cert">
+                    <option value="invalid">Unsigned / Invalid Certificate</option>
+                    <option value="valid">Installed & Verified (Cisco Enterprise CA)</option>
+                </select>
+            </div>
+            <div class="form-grid">
+                <label>Overlay Management Protocol (OMP) Status</label>
+                <select id="cfg-ctrl-omp">
+                    <option value="disabled">Disabled</option>
+                    <option value="enabled">Enabled & Peering Active</option>
+                </select>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn-secondary" onclick="closeModal('ctrl-modal')">Batal</button>
+            <button class="btn-cisco" onclick="saveController()">Simpan & Terapkan</button>
+        </div>
+    </div>
+</div>
+
+<!-- MODAL 2: AAR POLICY -->
+<div class="modal-overlay" id="aar-modal">
+    <div class="cisco-modal">
+        <div class="modal-header">
+            <h3><i class="fa-solid fa-route"></i> Modul 2: Dynamic Path Selection & AAR Policy</h3>
+            <button class="modal-close" onclick="closeModal('aar-modal')">&times;</button>
+        </div>
+        <div class="modal-body">
+            <div class="badge-info">Konfigurasi Application-Aware Routing Policy untuk memisahkan trafik POS Kasir dan Trafik Internet (DIA).</div>
+            <div class="form-grid">
+                <label>Jalur Utama Transaksi POS Kasir</label>
+                <select id="cfg-aar-pos">
+                    <option value="internet">Public Internet (High Latency)</option>
+                    <option value="mpls">MPLS Dedicated Transport (Low Latency)</option>
+                </select>
+            </div>
+            <div class="form-grid">
+                <label>AAR SLA Failover Threshold (Packet Loss Threshold)</label>
+                <select id="cfg-aar-loss">
+                    <option value="5">Packet Loss > 5%</option>
+                    <option value="2">Packet Loss > 2% (Target Expert SLA)</option>
+                </select>
+            </div>
+            <div class="form-grid">
+                <label>Direct Internet Access (DIA) untuk Web / O365</label>
+                <select id="cfg-aar-dia">
+                    <option value="false">Disabled (Backhaul via HQ)</option>
+                    <option value="true">Enabled (Local Breakout via vEdge Branch)</option>
+                </select>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn-secondary" onclick="closeModal('aar-modal')">Batal</button>
+            <button class="btn-cisco" onclick="saveAAR()">Simpan Policy</button>
+        </div>
+    </div>
+</div>
+
+<!-- MODAL 3: ZTNA & 802.1X -->
+<div class="modal-overlay" id="ztna-modal">
+    <div class="cisco-modal">
+        <div class="modal-header">
+            <h3><i class="fa-solid fa-user-shield"></i> Modul 3: ZTNA & 802.1X Port Security</h3>
+            <button class="modal-close" onclick="closeModal('ztna-modal')">&times;</button>
+        </div>
+        <div class="modal-body">
+            <div class="badge-info">Terapkan prinsip Never Trust, Always Verify pada switch port jaringan cabang.</div>
+            <div class="form-grid">
+                <label>802.1X Port Authentication (RADIUS Integration)</label>
+                <select id="cfg-ztna-dot1x">
+                    <option value="false">Disabled (Open Port Security)</option>
+                    <option value="true">Enabled (RADIUS MFA Enforcement)</option>
+                </select>
+            </div>
+            <div class="form-grid">
+                <label>Micro-Segmentation Policy (Isolation VLAN Kasir)</label>
+                <select id="cfg-ztna-micro">
+                    <option value="false">Disabled (POS Boleh Akses Guest/Admin)</option>
+                    <option value="true">Enabled (POS Terisolasi Penuh dari Guest & Admin)</option>
+                </select>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn-secondary" onclick="closeModal('ztna-modal')">Batal</button>
+            <button class="btn-cisco" onclick="saveZTNA()">Simpan Security Policy</button>
+        </div>
+    </div>
+</div>
+
+<!-- MODAL 4: ZBF & CLOUD SEC -->
+<div class="modal-overlay" id="zbf-modal">
+    <div class="cisco-modal">
+        <div class="modal-header">
+            <h3><i class="fa-solid fa-fire-burner"></i> Modul 4: Zone-Based Firewall & Cloud Security</h3>
+            <button class="modal-close" onclick="closeModal('zbf-modal')">&times;</button>
+        </div>
+        <div class="modal-body">
+            <div class="badge-info">Integrasikan proteksi keamanan perimeter pada vEdge Cabang.</div>
+            <div class="form-grid">
+                <label>vEdge Branch Zone-Based Firewall (ZBF)</label>
+                <select id="cfg-zbf-rule">
+                    <option value="allow_all">Allow All Traffic</option>
+                    <option value="strict">Inside (POS) -> Outside: HTTPS 443 Only (Deny Inbound)</option>
+                </select>
+            </div>
+            <div class="form-grid">
+                <label>URL Filtering & DNS Security Engine</label>
+                <select id="cfg-zbf-url">
+                    <option value="false">Disabled</option>
+                    <option value="true">Enabled (Block Malicious / High Risk Sites)</option>
+                </select>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn-secondary" onclick="closeModal('zbf-modal')">Batal</button>
+            <button class="btn-cisco" onclick="saveZBF()">Simpan Rules</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    let db = {
+        mod1: { cert: 'invalid', omp: 'disabled' },
+        mod2: { posPath: 'internet', lossThreshold: '5', dia: 'false' },
+        mod3: { dot1x: 'false', microSeg: 'false' },
+        mod4: { zbfRule: 'allow_all', urlFilter: 'false' },
+        mod5: { vSmartOnline: true, rogueBlocked: false, failoverTested: false }
+    };
+
+    function openModal(modalId) {
+        document.getElementById(modalId).classList.add('active');
+    }
+
+    function closeModal(id) { 
+        document.getElementById(id).classList.remove('active'); 
+    }
+
+    function getTimestamp() {
+        let now = new Date();
+        return now.toLocaleTimeString('id-ID', { hour12: false });
+    }
+
+    function logTerminal(msg, cls="") {
+        let box = document.getElementById('terminal-output');
+        let time = getTimestamp();
+        box.innerHTML += `<div class="${cls}"><span class="terminal-time">[${time}]</span> ${msg}</div>`;
+        box.scrollTop = box.scrollHeight;
+    }
+
+    /* SAVE HANDLERS */
+    function saveController() {
+        db.mod1.cert = document.getElementById('cfg-ctrl-cert').value;
+        db.mod1.omp = document.getElementById('cfg-ctrl-omp').value;
+        logTerminal(`[SD-WAN CTRL] Cert Status: ${db.mod1.cert}, OMP Status: ${db.mod1.omp}`, 'terminal-sys');
+        closeModal('ctrl-modal'); 
+        evaluate();
+    }
+
+    function saveAAR() {
+        db.mod2.posPath = document.getElementById('cfg-aar-pos').value;
+        db.mod2.lossThreshold = document.getElementById('cfg-aar-loss').value;
+        db.mod2.dia = document.getElementById('cfg-aar-dia').value;
+        logTerminal(`[AAR POLICY] POS Path: ${db.mod2.posPath.toUpperCase()}, SLA Loss Limit: ${db.mod2.lossThreshold}%, DIA: ${db.mod2.dia}`, 'terminal-sys');
+        closeModal('aar-modal'); 
+        evaluate();
+    }
+
+    function saveZTNA() {
+        db.mod3.dot1x = document.getElementById('cfg-ztna-dot1x').value;
+        db.mod3.microSeg = document.getElementById('cfg-ztna-micro').value;
+        logTerminal(`[ZTNA SEC] 802.1X Port Security: ${db.mod3.dot1x}, Micro-Segmentation: ${db.mod3.microSeg}`, 'terminal-sys');
+        closeModal('ztna-modal'); 
+        evaluate();
+    }
+
+    function saveZBF() {
+        db.mod4.zbfRule = document.getElementById('cfg-zbf-rule').value;
+        db.mod4.urlFilter = document.getElementById('cfg-zbf-url').value;
+        logTerminal(`[ZBF FIREWALL] Rule: ${db.mod4.zbfRule}, URL Filtering: ${db.mod4.urlFilter}`, 'terminal-sys');
+        closeModal('zbf-modal'); 
+        evaluate();
+    }
+
+    /* ACTION SIMULATIONS */
+    function runAARTest() {
+        logTerminal(`\n> MENJALANKAN UJI KUALITAS KONEKSI (SLA LOSS TEST)...`, 'terminal-sys');
+        if(db.mod1.omp !== 'enabled') {
+            logTerminal(`[FAIL] Fabric SD-WAN belum terbentuk! Selesaikan Modul 1.`, 'terminal-fail');
+            return;
+        }
+
+        logTerminal(`[SIMULASI] Menyuntikkan Packet Loss 3% pada Jalur MPLS Utama...`, 'terminal-warn');
+        if(db.mod2.posPath === 'mpls' && db.mod2.lossThreshold === '2') {
+            setTimeout(() => {
+                logTerminal(`[AAR TRIGGERED] Packet loss (3%) melampaui ambang batas SLA (< 2%).`, 'terminal-warn');
+                logTerminal(`[AAR SUCCESS] Trafik POS otomatis pindah ke Tunnel Enkripsi IPsec via Internet (< 3 detik). Zero Packet Drop!`, 'terminal-success');
+                db.mod5.failoverTested = true;
+                evaluate();
+            }, 600);
+        } else {
+            setTimeout(() => {
+                logTerminal(`[AAR FAIL] Path selection gagal terisolasi. Kasir mengalami timeout transaksi. Periksa konfigurasi Modul 2.`, 'terminal-fail');
+            }, 600);
+        }
+    }
+
+    function toggleVSmart() {
+        db.mod5.vSmartOnline = !db.mod5.vSmartOnline;
+        let btn = document.getElementById('btn-vsmart');
+        if(db.mod5.vSmartOnline) {
+            btn.innerHTML = '<i class="fa-solid fa-power-off"></i> Toggle vSmart Controller';
+            btn.className = 'btn-warn';
+            logTerminal('[SYSTEM] vSmart Controller kembali ONLINE. Sync OMP Peering Established.', 'terminal-sys');
+        } else {
+            btn.innerHTML = '<i class="fa-solid fa-bolt"></i> vSmart Down (Re-enable)';
+            btn.className = 'btn-danger';
+            logTerminal('[CRITICAL ALERT] vSmart Controller MATI / UNREACHABLE!', 'terminal-fail');
+            
+            if(db.mod1.omp === 'enabled') {
+                logTerminal('[GRACEFUL RESTART] Cached OMP Routes aktif! Data plane (trafik antar vEdge) TETAP BERJALAN NORMAL.', 'terminal-success');
+            } else {
+                logTerminal('[DATA PLANE FAILURE] Seluruh koneksi fabric putus total!', 'terminal-fail');
+            }
+        }
+        evaluate();
+    }
+
+    function runRogueAttack() {
+        logTerminal(`\n> MENJALANKAN SIMULASI PENYUSUPAN: ROGUE LAPTOP DI PORT KASIR...`, 'terminal-sys');
+        if(db.mod3.dot1x === 'true') {
+            setTimeout(() => {
+                logTerminal(`[ZTNA ENFORCEMENT] Device MAC Unrecognized & RADIUS Cert Missing!`, 'terminal-warn');
+                logTerminal(`[PORT BLOCKED] Switch Port otomatis Err-Disable via 802.1X. Rogue Laptop diisolasi ke Guest Isolation VLAN!`, 'terminal-success');
+                logTerminal(`[SYSLOG ALERT] Security incident dikirim ke Syslog Server (10.10.10.50).`, 'terminal-sys');
+                db.mod5.rogueBlocked = true;
+                evaluate();
+            }, 500);
+        } else {
+            setTimeout(() => {
+                logTerminal(`[BREACH SUCCESSFUL] Rogue Laptop berhasil mendapat IP dan meretas segmen Kasir! Aktifkan 802.1X di Modul 3.`, 'terminal-fail');
+            }, 500);
+        }
+    }
+
+    /* EVALUATION ENGINE */
+    function evaluate() {
+        let score = 0;
+
+        // Modul 1 (25 Poin)
+        let m1Ok = (db.mod1.cert === 'valid' && db.mod1.omp === 'enabled');
+        if(m1Ok) score += 25;
+        updateChecklist('mod1', m1Ok);
+        updateNode('ctrl', m1Ok, db.mod5.vSmartOnline ? '' : 'offline');
+        document.getElementById('lbl-ctrl').innerText = m1Ok ? (db.mod5.vSmartOnline ? "OMP Peering: Active" : "vSmart DOWN (Cached Routes)") : "vManage / vSmart / vBond";
+
+        // Modul 2 (20 Poin)
+        let m2Ok = (m1Ok && db.mod2.posPath === 'mpls' && db.mod2.lossThreshold === '2' && db.mod2.dia === 'true');
+        if(m2Ok) score += 20;
+        updateChecklist('mod2', m2Ok);
+        updateNode('vhq', m2Ok);
+        document.getElementById('lbl-vhq').innerText = m2Ok ? "AAR Active (POS SLA < 2%)" : "Dual WAN (MPLS + Inet)";
+
+        // Modul 3 (25 Poin)
+        let m3Ok = (db.mod3.dot1x === 'true' && db.mod3.microSeg === 'true');
+        if(m3Ok) score += 25;
+        updateChecklist('mod3', m3Ok);
+        updateNode('swcab', m3Ok);
+        document.getElementById('lbl-swcab').innerText = m3Ok ? "802.1X & ZTNA Enforced" : "802.1X / ZTNA: Off";
+
+        // Modul 4 (15 Poin)
+        let m4Ok = (db.mod4.zbfRule === 'strict' && db.mod4.urlFilter === 'true');
+        if(m4Ok) score += 15;
+        updateChecklist('mod4', m4Ok);
+        updateNode('vcab', m4Ok);
+        document.getElementById('lbl-vcab').innerText = m4Ok ? "ZBF & URL Filter: Active" : "ZBF & URL Filter: Off";
+
+        // Modul 5 (15 Poin)
+        let m5Ok = (m1Ok && db.mod5.rogueBlocked && db.mod5.failoverTested);
+        if(m5Ok) score += 15;
+        updateChecklist('mod5', m5Ok);
+
+        document.getElementById('total-score').innerText = `${score} / 100`;
+        renderSVG(m1Ok, m2Ok, m3Ok, m4Ok);
+    }
+
+    function updateChecklist(key, isDone) {
+        let el = document.getElementById(`chk-${key}`);
+        let ic = document.getElementById(`icon-${key}`);
+        if(isDone) {
+            el.classList.add('completed'); 
+            ic.className = 'fa-solid fa-circle-check';
+        } else {
+            el.classList.remove('completed'); 
+            ic.className = 'fa-regular fa-circle-check';
+        }
+    }
+
+    function updateNode(nodePre, isOk, extraClass = '') {
+        let node = document.getElementById(`${nodePre}-node`);
+        let badge = document.getElementById(`${nodePre}-badge`);
+        if(isOk) {
+            node.classList.add('configured');
+            badge.className = `status-badge ${extraClass || 'online'}`;
+            badge.innerHTML = '<i class="fa-solid fa-check"></i>';
+        } else {
+            node.classList.remove('configured');
+            badge.className = `status-badge ${extraClass}`;
+            badge.innerHTML = '!';
+        }
+    }
+
+    function getLineHtml(id1, id2, statusClass) {
+        const e1 = document.getElementById(id1).getBoundingClientRect();
+        const e2 = document.getElementById(id2).getBoundingClientRect();
+        const cvs = document.getElementById('canvas-area').getBoundingClientRect();
+        const x1 = e1.left - cvs.left + e1.width/2, y1 = e1.top - cvs.top + e1.height/2;
+        const x2 = e2.left - cvs.left + e2.width/2, y2 = e2.top - cvs.top + e2.height/2;
+        return `<line class="wired-line ${statusClass}" x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" />`;
+    }
+
+    function renderSVG(m1, m2, m3, m4) {
+        let svg = '';
+        
+        // Controller Control Plane Tunnels
+        let ctrlClass = (m1 && db.mod5.vSmartOnline) ? 'sdwan-overlay' : (m1 ? 'active' : 'offline');
+        svg += getLineHtml('ctrl-node', 'mpls-node', ctrlClass);
+        svg += getLineHtml('ctrl-node', 'inet-node', ctrlClass);
+
+        // vEdge HQ & Branch to WAN
+        svg += getLineHtml('vhq-node', 'mpls-node', m2 ? 'mpls-line' : 'active');
+        svg += getLineHtml('vhq-node', 'inet-node', m1 ? 'sdwan-overlay' : 'active');
+        
+        svg += getLineHtml('vcab-node', 'mpls-node', m2 ? 'mpls-line' : 'active');
+        svg += getLineHtml('vcab-node', 'inet-node', m4 ? 'sdwan-overlay' : 'active');
+
+        // LAN Connections
+        svg += getLineHtml('vhq-node', 'core-node', 'active');
+        svg += getLineHtml('vcab-node', 'swcab-node', 'active');
+        
+        // ZTNA & Client connections
+        svg += getLineHtml('core-node', 'ztna-node', 'active');
+        svg += getLineHtml('swcab-node', 'pos-node', m3 ? 'active' : '');
+        svg += getLineHtml('swcab-node', 'rogue-node', db.mod5.rogueBlocked ? 'blocked' : 'active');
+
+        document.getElementById('svg-connections').innerHTML = svg;
+    }
+
+    function resetAllConfigs() {
+        db = {
+            mod1: { cert: 'invalid', omp: 'disabled' },
+            mod2: { posPath: 'internet', lossThreshold: '5', dia: 'false' },
+            mod3: { dot1x: 'false', microSeg: 'false' },
+            mod4: { zbfRule: 'allow_all', urlFilter: 'false' },
+            mod5: { vSmartOnline: true, rogueBlocked: false, failoverTested: false }
+        };
+        let btn = document.getElementById('btn-vsmart');
+        btn.innerHTML = '<i class="fa-solid fa-power-off"></i> Toggle vSmart Controller';
+        btn.className = 'btn-warn';
+        logTerminal('[SYSTEM] Seluruh simulasi dan konfigurasi di-reset.', 'terminal-warn');
+        evaluate();
+    }
+
+    let resizeTimer;
+    window.addEventListener('resize', () => {
+        clearTimeout(resizeTimer);
+        resizeTimer = setTimeout(() => evaluate(), 100);
+    });
+    
+    setTimeout(() => {
+        logTerminal('[SYSTEM] Memuat Topologi Enterprise SD-WAN & Zero Trust Security Architecture...', 'terminal-sys');
+        logTerminal('[INFO] Skenario: Transformasi Digital Ritel Multi-Cabang (Durasi: 240 Menit).', 'terminal-sys');
+        logTerminal('[INSTRUCTION] Silakan klik ikon perangkat pada topologi untuk mengonfigurasi tiap Modul.', 'terminal-sys');
+        evaluate();
+    }, 300);
+</script>
+</body>
+</html>

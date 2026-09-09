@@ -1,0 +1,861 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Praktikum Smart City Infrastructure & IoT Edge Cybersecurity</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+
+    <style>
+        :root {
+            --cisco-blue: #005073;
+            --cisco-light-blue: #0284c7;
+            --cisco-accent: #06b6d4;
+            --bg-light: #f8fafc;
+            --card-bg: #ffffff;
+            --text-dark: #0f172a;
+            --text-muted: #64748b;
+            --border-color: #e2e8f0;
+            --success-color: #10b981;
+            --danger-color: #ef4444;
+            --warning-color: #f59e0b;
+            --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+            --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.05);
+            --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.05);
+            --transition-smooth: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { background-color: var(--bg-light); color: var(--text-dark); font-family: 'Inter', sans-serif; padding: 32px 16px; line-height: 1.5; -webkit-font-smoothing: antialiased; }
+        
+        .container { 
+            max-width: 1360px; 
+            margin: 0 auto; 
+            background-color: var(--card-bg); 
+            border-radius: 16px; 
+            box-shadow: var(--shadow-lg); 
+            overflow: hidden; 
+            border: 1px solid var(--border-color);
+        }
+        
+        /* HEADER */
+        header { 
+            background: linear-gradient(135deg, #002b40 0%, var(--cisco-blue) 100%); 
+            color: #fff; 
+            padding: 24px 32px; 
+            display: flex; 
+            justify-content: space-between; 
+            align-items: center; 
+            border-bottom: 3px solid var(--cisco-accent);
+            flex-wrap: wrap;
+            gap: 20px;
+        }
+        .header-title { display: flex; align-items: center; gap: 16px; }
+        .header-title i { font-size: 28px; color: var(--cisco-accent); background: rgba(255,255,255,0.05); padding: 14px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.1); }
+        .header-title h1 { font-size: 20px; font-weight: 700; margin-bottom: 4px; letter-spacing: -0.02em; }
+        .header-title p { font-size: 13px; color: #cbd5e1; font-weight: 400; }
+
+        .score-box { 
+            background: rgba(15, 23, 42, 0.4); 
+            padding: 12px 24px; 
+            border-radius: 12px; 
+            border: 1px solid rgba(255,255,255,0.1); 
+            text-align: right; 
+            backdrop-filter: blur(8px);
+        }
+        .score-title { font-size: 11px; text-transform: uppercase; color: #94a3b8; font-weight: 700; letter-spacing: 0.05em; }
+        .score-value { font-size: 26px; font-weight: 700; color: var(--success-color); font-family: 'JetBrains Mono', monospace; margin-top: 2px; }
+
+        /* TOPOLOGY AREA */
+        .topology-section { padding: 0; background-color: #ffffff; border-bottom: 1px solid var(--border-color); }
+        .section-header { padding: 16px 32px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); background: #f8fafc; }
+        .section-header-title { font-weight: 600; color: var(--text-dark); font-size: 14px; display: flex; align-items: center; gap: 10px; }
+        .section-header-title i { color: var(--cisco-blue); font-size: 16px; }
+        
+        .topology-wrapper { width: 100%; overflow-x: auto; }
+        .topology-wrapper::-webkit-scrollbar { height: 8px; }
+        .topology-wrapper::-webkit-scrollbar-track { background: #f1f5f9; }
+        .topology-wrapper::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+
+        .topology-canvas { position: relative; height: 680px; min-width: 1000px; background-color: #f8fafc; background-image: radial-gradient(#cbd5e1 1px, transparent 1px); background-size: 28px 28px; overflow: hidden; }
+        .connections-svg { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 1; }
+        
+        /* CABLES */
+        .wired-line { stroke: #cbd5e1; stroke-width: 3; transition: stroke 0.4s ease, opacity 0.4s ease; stroke-linecap: round; }
+        .wired-line.active { stroke: var(--success-color); stroke-width: 4; }
+        .wired-line.encrypted { stroke: var(--cisco-accent); stroke-width: 5; stroke-dasharray: 8 4; animation: flowData 1s linear infinite; }
+        .wired-line.ring { stroke: var(--cisco-light-blue); stroke-width: 4; }
+        .wired-line.offline { stroke: var(--danger-color); stroke-width: 2; opacity: 0.3; stroke-dasharray: 4 4; }
+        
+        @keyframes flowData { to { stroke-dashoffset: -24; } }
+
+        /* DEVICES */
+        .device-node { position: absolute; z-index: 2; display: flex; flex-direction: column; align-items: center; cursor: pointer; user-select: none; transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1); }
+        .device-node:hover { transform: translateY(-6px); }
+        .device-node:active { transform: scale(0.96); }
+        .device-node.offline { opacity: 0.5; filter: grayscale(100%); }
+        
+        .device-icon-box { width: 60px; height: 60px; background-color: #fff; border: 2px solid var(--border-color); border-radius: 14px; display: flex; justify-content: center; align-items: center; box-shadow: var(--shadow-sm); position: relative; transition: var(--transition-smooth); }
+        
+        .device-icon-box i, .device-icon-box svg { font-size: 24px; color: var(--text-muted); transition: color 0.3s ease; }
+        .device-node:hover .device-icon-box { border-color: var(--cisco-light-blue); box-shadow: 0 10px 15px -3px rgba(2, 132, 199, 0.15); }
+        
+        .device-node.configured .device-icon-box { border-color: var(--cisco-blue); }
+        .device-node.configured .device-icon-box i, 
+        .device-node.configured .device-icon-box svg { color: var(--cisco-blue); }
+        
+        .core-node .device-icon-box { width: 70px; height: 70px; background: #fff; border-radius: 16px; }
+        .core-node.configured .device-icon-box { border-color: var(--cisco-blue); background: #f0f9ff; }
+
+        .device-label { margin-top: 8px; font-size: 11px; font-weight: 600; background: rgba(255,255,255,0.95); padding: 5px 10px; border: 1px solid var(--border-color); border-radius: 8px; text-align: center; line-height: 1.3; box-shadow: var(--shadow-sm); backdrop-filter: blur(4px); }
+        .device-ip { font-size: 10px; color: var(--text-muted); font-weight: 500; display: block; margin-top: 2px; font-family: 'JetBrains Mono', monospace; }
+        .device-node.configured .device-ip { color: var(--cisco-light-blue); font-weight: 600; }
+        
+        .status-badge { position: absolute; top: -6px; right: -6px; width: 22px; height: 22px; border-radius: 50%; background-color: var(--danger-color); border: 2px solid #fff; display: flex; align-items: center; justify-content: center; font-size: 10px; color: #fff; font-weight: bold; box-shadow: var(--shadow-sm); transition: var(--transition-smooth); }
+        .status-badge.online { background-color: var(--success-color); }
+
+        /* Posisi Perangkat pada Topologi */
+        #cloud-node { top: 3%; left: 50%; transform: translateX(-50%); }
+        #cloud-node:hover { transform: translateX(-50%) translateY(-6px); }
+
+        #asa-node { top: 19%; left: 50%; transform: translateX(-50%); }
+        #asa-node:hover { transform: translateX(-50%) translateY(-6px); }
+
+        #r-north-node { top: 36%; left: 30%; transform: translateX(-50%); }
+        #r-north-node:hover { transform: translateX(-50%) translateY(-6px); }
+
+        #r-south-node { top: 36%; left: 70%; transform: translateX(-50%); }
+        #r-south-node:hover { transform: translateX(-50%) translateY(-6px); }
+
+        #dist1-node { top: 56%; left: 18%; transform: translateX(-50%); }
+        #dist1-node:hover { transform: translateX(-50%) translateY(-6px); }
+
+        #dist2-node { top: 56%; left: 38%; transform: translateX(-50%); }
+        #dist2-node:hover { transform: translateX(-50%) translateY(-6px); }
+
+        #dist3-node { top: 56%; left: 62%; transform: translateX(-50%); }
+        #dist3-node:hover { transform: translateX(-50%) translateY(-6px); }
+
+        #dist4-node { top: 56%; left: 82%; transform: translateX(-50%); }
+        #dist4-node:hover { transform: translateX(-50%) translateY(-6px); }
+
+        #iot1-node { top: 78%; left: 18%; transform: translateX(-50%); }
+        #iot1-node:hover { transform: translateX(-50%) translateY(-6px); }
+
+        #iot2-node { top: 78%; left: 38%; transform: translateX(-50%); }
+        #iot2-node:hover { transform: translateX(-50%) translateY(-6px); }
+
+        #iot3-node { top: 78%; left: 62%; transform: translateX(-50%); }
+        #iot3-node:hover { transform: translateX(-50%) translateY(-6px); }
+
+        #iot4-node { top: 78%; left: 82%; transform: translateX(-50%); }
+        #iot4-node:hover { transform: translateX(-50%) translateY(-6px); }
+
+        /* BOTTOM SECTION */
+        .lkpd-body { padding: 32px; display: grid; grid-template-columns: 1.25fr 1fr; gap: 32px; background: #fff; }
+        .card { background: #fff; border: 1px solid var(--border-color); border-radius: 16px; padding: 24px; box-shadow: var(--shadow-sm); }
+        .card-title { font-size: 15px; font-weight: 700; color: var(--text-dark); margin-bottom: 20px; display: flex; align-items: center; gap: 10px; }
+        .card-title i { color: var(--cisco-blue); font-size: 18px; }
+        
+        /* CHECKLIST */
+        .checklist-group { display: flex; flex-direction: column; gap: 14px; }
+        .checklist-item { display: flex; flex-direction: column; background: #f8fafc; border: 1px solid var(--border-color); padding: 16px 18px; border-radius: 12px; transition: var(--transition-smooth); gap: 6px; }
+        .checklist-item:hover { border-color: #cbd5e1; box-shadow: var(--shadow-sm); }
+        .checklist-item.completed { background: #f0fdf4; border-color: #bbf7d0; }
+        
+        .item-header { display: flex; align-items: center; justify-content: space-between; }
+        .item-info { display: flex; align-items: center; gap: 12px; font-size: 13px; font-weight: 600; color: var(--text-dark); }
+        .item-info i { font-size: 18px; color: var(--text-muted); transition: 0.3s; }
+        .checklist-item.completed .item-info i { color: var(--success-color); }
+        .item-points { font-size: 11px; font-weight: 700; background: #e2e8f0; color: #475569; padding: 3px 10px; border-radius: 20px; }
+        .checklist-item.completed .item-points { background: #dcfce7; color: #15803d; }
+        .item-desc { font-size: 12px; color: var(--text-muted); margin-left: 30px; line-height: 1.5; }
+
+        /* TERMINAL */
+        .terminal-container { border-radius: 12px; overflow: hidden; box-shadow: var(--shadow-md); border: 1px solid #1e293b; background: #0f172a; }
+        .terminal-header { background: #1e293b; padding: 10px 16px; display: flex; align-items: center; gap: 8px; }
+        .terminal-dot { width: 10px; height: 10px; border-radius: 50%; }
+        .terminal-dot.red { background: #ef4444; }
+        .terminal-dot.yellow { background: #f59e0b; }
+        .terminal-dot.green { background: #10b981; }
+        .terminal-title { margin-left: auto; margin-right: auto; color: #94a3b8; font-size: 12px; font-weight: 500; font-family: 'Inter', sans-serif; padding-right: 30px; }
+        
+        .terminal-box { color: #e2e8f0; font-family: 'JetBrains Mono', monospace; font-size: 12px; padding: 16px; height: 280px; overflow-y: auto; line-height: 1.6; }
+        .terminal-box::-webkit-scrollbar { width: 6px; }
+        .terminal-box::-webkit-scrollbar-track { background: #0f172a; }
+        .terminal-box::-webkit-scrollbar-thumb { background: #334155; border-radius: 3px; }
+
+        .terminal-time { color: #64748b; margin-right: 6px; }
+        .terminal-success { color: #34d399; } 
+        .terminal-fail { color: #f87171; } 
+        .terminal-warn { color: #fbbf24; }
+        .terminal-sys { color: #38bdf8; }
+        
+        /* BUTTONS */
+        .action-controls { display: flex; flex-direction: column; gap: 10px; margin-top: 20px; }
+        .button-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+        button { padding: 10px 16px; font-size: 13px; border-radius: 8px; font-weight: 600; cursor: pointer; transition: var(--transition-smooth); display: flex; align-items: center; justify-content: center; gap: 8px; font-family: 'Inter', sans-serif; outline: none; }
+        button:active { transform: scale(0.98); }
+        
+        .btn-cisco { background: var(--cisco-blue); color: #fff; border: 1px solid transparent; }
+        .btn-cisco:hover { background: #003b54; box-shadow: var(--shadow-md); }
+        .btn-secondary { background: #fff; color: var(--text-dark); border: 1px solid var(--border-color); }
+        .btn-secondary:hover { background: #f8fafc; border-color: #cbd5e1; }
+        .btn-danger { background: var(--danger-color); color: #fff; border: 1px solid transparent; }
+        .btn-danger:hover { background: #dc2626; box-shadow: var(--shadow-md); }
+        .btn-warning { background: var(--warning-color); color: #fff; border: 1px solid transparent; }
+        .btn-warning:hover { background: #d97706; }
+
+        /* MODALS */
+        .modal-overlay { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(15,23,42,0.6); backdrop-filter: blur(8px); display: flex; justify-content: center; align-items: center; opacity: 0; pointer-events: none; transition: opacity 0.3s ease; z-index: 100; padding: 16px; }
+        .modal-overlay.active { opacity: 1; pointer-events: auto; }
+        .modal-overlay.active .cisco-modal { transform: scale(1) translateY(0); opacity: 1; }
+        
+        .cisco-modal { background: #fff; width: 100%; max-width: 480px; border-radius: 16px; overflow: hidden; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.3); transform: scale(0.95) translateY(10px); opacity: 0; transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1); }
+        .modal-header { background: #002b40; color: #fff; padding: 18px 24px; display: flex; justify-content: space-between; align-items: center; border-bottom: 3px solid var(--cisco-accent); }
+        .modal-header h3 { font-size: 15px; font-weight: 600; display: flex; align-items: center; gap: 10px; }
+        .modal-close { background: none; border: none; color: rgba(255,255,255,0.6); cursor: pointer; font-size: 22px; line-height: 1; padding: 4px; transition: var(--transition-smooth); }
+        .modal-close:hover { color: #fff; transform: rotate(90deg); }
+        
+        .modal-body { padding: 20px 24px; max-height: 70vh; overflow-y: auto; }
+        .modal-body::-webkit-scrollbar { width: 6px; }
+        .modal-body::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
+        
+        .form-grid { display: flex; flex-direction: column; gap: 8px; margin-bottom: 16px; }
+        .form-grid label { font-size: 12px; font-weight: 600; color: var(--text-dark); }
+        .form-grid input, .form-grid select { padding: 10px 14px; border: 1px solid var(--border-color); border-radius: 8px; font-size: 13px; font-family: inherit; transition: var(--transition-smooth); background: #f8fafc; color: var(--text-dark); width: 100%; }
+        .form-grid input:focus, .form-grid select:focus { outline: none; border-color: var(--cisco-light-blue); background: #fff; box-shadow: 0 0 0 4px rgba(2, 132, 199, 0.1); }
+        
+        .modal-footer { padding: 16px 24px; background: #f8fafc; display: flex; justify-content: flex-end; gap: 10px; border-top: 1px solid var(--border-color); }
+        
+        .badge-info { font-size: 12px; background: #f0f9ff; color: #0369a1; padding: 12px 14px; border-radius: 8px; margin-bottom: 16px; line-height: 1.5; border-left: 4px solid #0284c7; }
+
+        @media (max-width: 992px) {
+            .lkpd-body { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <header>
+        <div class="header-title">
+            <i class="fa-solid fa-city"></i>
+            <div>
+                <h1>Smart City Infrastructure, Edge Computing & IoT Cybersecurity</h1>
+                <p>Simulasi 240 Menit (Expert/Specialist) - 34 Devices Hybrid Ring, PVLAN & Mitigation</p>
+            </div>
+        </div>
+        <div class="score-box">
+            <div class="score-title">Nilai Praktikum</div>
+            <div class="score-value" id="total-score">0 / 100</div>
+        </div>
+    </header>
+
+    <div class="topology-section">
+        <div class="section-header">
+            <span class="section-header-title"><i class="fa-solid fa-diagram-project"></i> Topologi Master Smart City (Klik Node untuk Konfigurasi)</span>
+            <button class="btn-secondary" style="font-size: 12px; padding: 6px 14px;" onclick="resetAllConfigs()">
+                <i class="fa-solid fa-rotate-right"></i> Reset Topologi
+            </button>
+        </div>
+        
+        <div class="topology-wrapper">
+            <div class="topology-canvas" id="canvas-area">
+                <svg class="connections-svg" id="svg-connections"></svg>
+
+                <!-- Central Cloud -->
+                <div class="device-node core-node" id="cloud-node">
+                    <div class="device-icon-box"><i class="fa-solid fa-cloud-bolt"></i></div>
+                    <div class="device-label">Central Cloud DC<br><span class="device-ip">10.100.0.1</span></div>
+                </div>
+
+                <!-- ASA Firewall -->
+                <div class="device-node core-node" id="asa-node" onclick="openModal('asa-modal')">
+                    <div class="device-icon-box">
+                        <i class="fa-solid fa-shield-halved"></i>
+                        <div class="status-badge" id="asa-badge">!</div>
+                    </div>
+                    <div class="device-label">Core Edge ASA Firewall<br><span class="device-ip" id="lbl-asa">FW: Default</span></div>
+                </div>
+
+                <!-- Core Routers (North & South) -->
+                <div class="device-node core-node" id="r-north-node" onclick="openModal('router-modal', 'north')">
+                    <div class="device-icon-box">
+                        <i class="fa-solid fa-network-wired"></i>
+                        <div class="status-badge" id="r-north-badge">!</div>
+                    </div>
+                    <div class="device-label">Core Router - North<br><span class="device-ip" id="lbl-r-north">Ring: Disabled</span></div>
+                </div>
+
+                <div class="device-node core-node" id="r-south-node" onclick="openModal('router-modal', 'south')">
+                    <div class="device-icon-box">
+                        <i class="fa-solid fa-network-wired"></i>
+                        <div class="status-badge" id="r-south-badge">!</div>
+                    </div>
+                    <div class="device-label">Core Router - South<br><span class="device-ip" id="lbl-r-south">Ring: Disabled</span></div>
+                </div>
+
+                <!-- Distribution Switches & Gateways -->
+                <div class="device-node" id="dist1-node" onclick="openModal('edge-modal', 'dist1')">
+                    <div class="device-icon-box"><i class="fa-solid fa-server"></i><div class="status-badge" id="dist1-badge">!</div></div>
+                    <div class="device-label">Dist SW 1 / Edge Server 1<br><span class="device-ip" id="lbl-dist1">VLAN 100 (CCTV)</span></div>
+                </div>
+
+                <div class="device-node" id="dist2-node" onclick="openModal('edge-modal', 'dist2')">
+                    <div class="device-icon-box"><i class="fa-solid fa-server"></i><div class="status-badge" id="dist2-badge">!</div></div>
+                    <div class="device-label">Dist SW 2 / Edge Server 2<br><span class="device-ip" id="lbl-dist2">VLAN 200 (Traffic)</span></div>
+                </div>
+
+                <div class="device-node" id="dist3-node" onclick="openModal('edge-modal', 'dist3')">
+                    <div class="device-icon-box"><i class="fa-solid fa-tower-cell"></i><div class="status-badge" id="dist3-badge">!</div></div>
+                    <div class="device-label">Dist SW 3 / IoT GW 1<br><span class="device-ip" id="lbl-dist3">PVLAN 300 (Lighting)</span></div>
+                </div>
+
+                <div class="device-node" id="dist4-node" onclick="openModal('edge-modal', 'dist4')">
+                    <div class="device-icon-box"><i class="fa-solid fa-tower-cell"></i><div class="status-badge" id="dist4-badge">!</div></div>
+                    <div class="device-label">Dist SW 4 / IoT GW 2<br><span class="device-ip" id="lbl-dist4">VLAN 400 (Mgmt)</span></div>
+                </div>
+
+                <!-- End IoT Devices & Sensors -->
+                <div class="device-node" id="iot1-node" onclick="openModal('iot-modal', 'iot1')">
+                    <div class="device-icon-box"><i class="fa-solid fa-video"></i><div class="status-badge" id="iot1-badge">!</div></div>
+                    <div class="device-label">CCTV Kota (4 Node)<br><span class="device-ip" id="lbl-iot1">Logic: Off</span></div>
+                </div>
+
+                <div class="device-node" id="iot2-node" onclick="openModal('iot-modal', 'iot2')">
+                    <div class="device-icon-box"><i class="fa-solid fa-car-tunnel"></i><div class="status-badge" id="iot2-badge">!</div></div>
+                    <div class="device-label">Sensor Trafik (4 Node)<br><span class="device-ip" id="lbl-iot2">Logic: Off</span></div>
+                </div>
+
+                <div class="device-node" id="iot3-node" onclick="openModal('iot-modal', 'iot3')">
+                    <div class="device-icon-box"><i class="fa-solid fa-lightbulb"></i><div class="status-badge" id="iot3-badge">!</div></div>
+                    <div class="device-label">Smart Light (PVLAN)<br><span class="device-ip" id="lbl-iot3">Isolated Port</span></div>
+                </div>
+
+                <div class="device-node" id="iot4-node" onclick="openModal('iot-modal', 'iot4')">
+                    <div class="device-icon-box"><i class="fa-solid fa-square-parking"></i><div class="status-badge" id="iot4-badge">!</div></div>
+                    <div class="device-label">Smart Park & Workstation<br><span class="device-ip" id="lbl-iot4">Defense: Off</span></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="lkpd-body">
+        <div class="card">
+            <div class="card-title"><i class="fa-solid fa-list-check"></i> Rubrik Evaluasi Skenario (240 Menit)</div>
+            <div class="checklist-group">
+                <div class="checklist-item" id="chk-ring">
+                    <div class="item-header">
+                        <div class="item-info"><i class="fa-regular fa-circle-check" id="icon-ring"></i><span>Modul 1: Metro Ethernet Ring & OSPF/REP</span></div>
+                        <span class="item-points">20 Poin</span>
+                    </div>
+                    <div class="item-desc">Aktifkan Ring Backbone REP / OSPF Area 0 Fast-Hellos & alokasikan IP VLSM /30 per link & /28 manajemen edge.</div>
+                </div>
+
+                <div class="checklist-item" id="chk-logic">
+                    <div class="item-header">
+                        <div class="item-info"><i class="fa-regular fa-circle-check" id="icon-logic"></i><span>Modul 2: IoT Logic & Edge Server Automation</span></div>
+                        <span class="item-points">20 Poin</span>
+                    </div>
+                    <div class="item-desc">Registrasi IoT ke Edge Server. Pasang Conditional Rules (Motion detect -> Smart Light 100% & CCTV HD Record; Env alert).</div>
+                </div>
+
+                <div class="checklist-item" id="chk-pvlan">
+                    <div class="item-header">
+                        <div class="item-info"><i class="fa-regular fa-circle-check" id="icon-pvlan"></i><span>Modul 3: VLAN & Private VLAN Isolation</span></div>
+                        <span class="item-points">20 Poin</span>
+                    </div>
+                    <div class="item-desc">Segmentasi VLAN 100/200/300/400. Menerapkan Private VLAN (PVLAN) Isolated Ports antar-sensor penerangan publik.</div>
+                </div>
+
+                <div class="checklist-item" id="chk-asa">
+                    <div class="item-header">
+                        <div class="item-info"><i class="fa-regular fa-circle-check" id="icon-asa"></i><span>Modul 4: Encrypted IPsec GRE & ASA Firewall</span></div>
+                        <span class="item-points">20 Poin</span>
+                    </div>
+                    <div class="item-desc">Bangun IPsec GRE Tunnel ke Cloud. Filter ASA Firewall (Izinkan MQTT 1883/HTTPS 443, Blokir SSH/Telnet dari subnet IoT).</div>
+                </div>
+
+                <div class="checklist-item" id="chk-cyber">
+                    <div class="item-header">
+                        <div class="item-info"><i class="fa-regular fa-circle-check" id="icon-cyber"></i><span>Modul 5: Cyber Mitigation & Redundant Failover</span></div>
+                        <span class="item-points">20 Poin</span>
+                    </div>
+                    <div class="item-desc">Mitigasi Botnet DDoS (Storm Control/ACL < 5 menit) dan lulus pengujian kabel Core North terputus (> 99% uptime).</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-title"><i class="fa-solid fa-terminal"></i> Terminal Monitoring & Log Serangan</div>
+            
+            <div class="terminal-container">
+                <div class="terminal-header">
+                    <div class="terminal-dot red"></div>
+                    <div class="terminal-dot yellow"></div>
+                    <div class="terminal-dot green"></div>
+                    <div class="terminal-title">edge-soc-console -- syslog</div>
+                </div>
+                <div class="terminal-box" id="terminal-output">
+                    <!-- Logs will appear here -->
+                </div>
+            </div>
+
+            <div class="action-controls">
+                <div class="button-grid">
+                    <button class="btn-warning" onclick="triggerDDoSAttack()"><i class="fa-solid fa-bug"></i> Simulasi Botnet DDoS</button>
+                    <button class="btn-danger" id="btn-cut-link" onclick="toggleCoreLink()"><i class="fa-solid fa-scissors"></i> Putus Kabel Core North</button>
+                </div>
+                <button class="btn-cisco" onclick="runSmartCityAudit()"><i class="fa-solid fa-shield-cat"></i> Audit Integrity & Telemetri System</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal 1: ASA Firewall & GRE Tunnel -->
+<div class="modal-overlay" id="asa-modal">
+    <div class="cisco-modal">
+        <div class="modal-header">
+            <h3><i class="fa-solid fa-shield-halved"></i> Konfigurasi Edge ASA Firewall & Tunnel</h3>
+            <button class="modal-close" onclick="closeModal('asa-modal')">&times;</button>
+        </div>
+        <div class="modal-body">
+            <div class="badge-info">Konfigurasi Enkripsi VPN GRE IPsec menuju Central Cloud serta Stateful Inspection untuk menyaring port IoT.</div>
+            <div class="form-grid">
+                <label for="cfg-asa-tunnel">IPsec GRE Encrypted Tunnel</label>
+                <select id="cfg-asa-tunnel">
+                    <option value="disabled">Disabled (Unencrypted Traffic)</option>
+                    <option value="enabled">Enabled (IPsec GRE Active)</option>
+                </select>
+            </div>
+            <div class="form-grid">
+                <label for="cfg-asa-fw">ASA Stateful Inspection Rules</label>
+                <select id="cfg-asa-fw">
+                    <option value="permit_all">Permit All Traffic (Unsecured)</option>
+                    <option value="strict">Allow MQTT (1883) & HTTPS (443), Block SSH/Telnet</option>
+                </select>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn-secondary" onclick="closeModal('asa-modal')">Batal</button>
+            <button class="btn-cisco" onclick="saveASA()">Simpan Policy</button>
+        </div>
+    </div>
+</div>
+
+<!-- Modal 2: Core Routers (North & South) -->
+<div class="modal-overlay" id="router-modal">
+    <div class="cisco-modal">
+        <div class="modal-header">
+            <h3><i class="fa-solid fa-network-wired"></i> Core Ring Backbone Configuration</h3>
+            <button class="modal-close" onclick="closeModal('router-modal')">&times;</button>
+        </div>
+        <div class="modal-body">
+            <input type="hidden" id="r-target">
+            <div class="badge-info">Aktifkan protokol Ring (REP/OSPF Area 0 dengan Fast-Hellos) untuk pemulihan ultra-fast &lt; 50ms.</div>
+            <div class="form-grid">
+                <label for="cfg-r-proto">Protokol Routing Backbone</label>
+                <select id="cfg-r-proto">
+                    <option value="none">Static Routing (No Redundancy)</option>
+                    <option value="ospf_fast">OSPF Area 0 (Fast-Hellos / REP Ring Active)</option>
+                </select>
+            </div>
+            <div class="form-grid">
+                <label for="cfg-r-subnet">Skema Subnetting VLSM</label>
+                <select id="cfg-r-subnet">
+                    <option value="invalid">Default Classful /24</option>
+                    <option value="valid">/30 Inter-router Links & /28 Edge Mgmt</option>
+                </select>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn-secondary" onclick="closeModal('router-modal')">Batal</button>
+            <button class="btn-cisco" onclick="saveRouter()">Simpan Konfigurasi</button>
+        </div>
+    </div>
+</div>
+
+<!-- Modal 3: Edge Servers & Distribution Switches -->
+<div class="modal-overlay" id="edge-modal">
+    <div class="cisco-modal">
+        <div class="modal-header">
+            <h3><i class="fa-solid fa-server"></i> Distribution SW & Edge Server</h3>
+            <button class="modal-close" onclick="closeModal('edge-modal')">&times;</button>
+        </div>
+        <div class="modal-body">
+            <input type="hidden" id="edge-target">
+            <div class="badge-info">Pengaturan segmentasi VLAN dan isolasi Private VLAN (PVLAN) pada perangkat edge.</div>
+            <div class="form-grid">
+                <label for="cfg-edge-vlan">Segmentasi VLAN Tagging</label>
+                <select id="cfg-edge-vlan">
+                    <option value="vlan1">VLAN 1 Default (Tidak Tersegmentasi)</option>
+                    <option value="vlan_ok">VLAN 100/200/300/400 Multi-VLAN Configured</option>
+                </select>
+            </div>
+            <div class="form-grid">
+                <label for="cfg-edge-pvlan">Private VLAN (PVLAN) Mode (Smart Lighting)</label>
+                <select id="cfg-edge-pvlan">
+                    <option value="disabled">Disabled (Sensor dapat saling komunikasi/ping)</option>
+                    <option value="isolated">PVLAN Isolated Ports (Isolasi total antar-sensor)</option>
+                </select>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn-secondary" onclick="closeModal('edge-modal')">Batal</button>
+            <button class="btn-cisco" onclick="saveEdge()">Simpan VLAN</button>
+        </div>
+    </div>
+</div>
+
+<!-- Modal 4: End IoT Devices & Smart Logic -->
+<div class="modal-overlay" id="iot-modal">
+    <div class="cisco-modal">
+        <div class="modal-header">
+            <h3><i class="fa-solid fa-microchip"></i> IoT Nodes & Cyber Defense Tuning</h3>
+            <button class="modal-close" onclick="closeModal('iot-modal')">&times;</button>
+        </div>
+        <div class="modal-body">
+            <input type="hidden" id="iot-target">
+            <div class="badge-info">Konfigurasi Conditional Logic Otomatisasi IoT serta Keamanan Port (Storm Control / Rate Limiting).</div>
+            <div class="form-grid">
+                <label for="cfg-iot-logic">Condition Rules (Automation Logic)</label>
+                <select id="cfg-iot-logic">
+                    <option value="disabled">Disabled (Manual Action Only)</option>
+                    <option value="enabled">Active (Motion -> Light 100% & CCTV HD Rec; Env Alert)</option>
+                </select>
+            </div>
+            <div class="form-grid">
+                <label for="cfg-iot-defense">Access Port Defense (Storm Control & Rate Limiting)</label>
+                <select id="cfg-iot-defense">
+                    <option value="disabled">Disabled (Rentan DDoS / Traffic Flood)</option>
+                    <option value="enabled">Enabled (Rate-Limiting & ACL Blocking Active)</option>
+                </select>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn-secondary" onclick="closeModal('iot-modal')">Batal</button>
+            <button class="btn-cisco" onclick="saveIoT()">Simpan Perangkat</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    // System Database State
+    let db = {
+        asa: { tunnel: 'disabled', fw: 'permit_all' },
+        r: { 
+            north: { proto: 'none', subnet: 'invalid', power: true },
+            south: { proto: 'none', subnet: 'invalid', power: true }
+        },
+        edge: {
+            dist1: { vlan: 'vlan1', pvlan: 'disabled' },
+            dist2: { vlan: 'vlan1', pvlan: 'disabled' },
+            dist3: { vlan: 'vlan1', pvlan: 'disabled' },
+            dist4: { vlan: 'vlan1', pvlan: 'disabled' }
+        },
+        iot: {
+            iot1: { logic: 'disabled', defense: 'disabled' },
+            iot2: { logic: 'disabled', defense: 'disabled' },
+            iot3: { logic: 'disabled', defense: 'disabled' },
+            iot4: { logic: 'disabled', defense: 'disabled' }
+        },
+        sim: {
+            ddosActive: false,
+            linkNorthCut: false
+        }
+    };
+
+    function openModal(modalId, targetId = '') {
+        if(modalId === 'router-modal') {
+            document.getElementById('r-target').value = targetId;
+            document.getElementById('cfg-r-proto').value = db.r[targetId].proto;
+            document.getElementById('cfg-r-subnet').value = db.r[targetId].subnet;
+        } else if(modalId === 'edge-modal') {
+            document.getElementById('edge-target').value = targetId;
+            document.getElementById('cfg-edge-vlan').value = db.edge[targetId].vlan;
+            document.getElementById('cfg-edge-pvlan').value = db.edge[targetId].pvlan;
+        } else if(modalId === 'iot-modal') {
+            document.getElementById('iot-target').value = targetId;
+            document.getElementById('cfg-iot-logic').value = db.iot[targetId].logic;
+            document.getElementById('cfg-iot-defense').value = db.iot[targetId].defense;
+        } else if(modalId === 'asa-modal') {
+            document.getElementById('cfg-asa-tunnel').value = db.asa.tunnel;
+            document.getElementById('cfg-asa-fw').value = db.asa.fw;
+        }
+        document.getElementById(modalId).classList.add('active');
+    }
+
+    function closeModal(id) { document.getElementById(id).classList.remove('active'); }
+
+    function getTimestamp() {
+        let now = new Date();
+        return now.toLocaleTimeString('id-ID', { hour12: false });
+    }
+
+    function logTerminal(msg, cls="") {
+        let box = document.getElementById('terminal-output');
+        let time = getTimestamp();
+        box.innerHTML += `<div class="${cls}"><span class="terminal-time">[${time}]</span> ${msg}</div>`;
+        box.scrollTop = box.scrollHeight;
+    }
+
+    function saveASA() {
+        db.asa.tunnel = document.getElementById('cfg-asa-tunnel').value;
+        db.asa.fw = document.getElementById('cfg-asa-fw').value;
+        logTerminal(`[ASA FIREWALL] IPsec GRE Tunnel: ${db.asa.tunnel.toUpperCase()}, Filtering Rules: ${db.asa.fw}`, 'terminal-sys');
+        closeModal('asa-modal');
+        evaluate();
+    }
+
+    function saveRouter() {
+        let t = document.getElementById('r-target').value;
+        db.r[t].proto = document.getElementById('cfg-r-proto').value;
+        db.r[t].subnet = document.getElementById('cfg-r-subnet').value;
+        logTerminal(`[CORE ROUTER ${t.toUpperCase()}] Protocol: ${db.r[t].proto}, VLSM Subnetting: ${db.r[t].subnet}`, 'terminal-sys');
+        closeModal('router-modal');
+        evaluate();
+    }
+
+    function saveEdge() {
+        let t = document.getElementById('edge-target').value;
+        db.edge[t].vlan = document.getElementById('cfg-edge-vlan').value;
+        db.edge[t].pvlan = document.getElementById('cfg-edge-pvlan').value;
+        logTerminal(`[DIST SWITCH ${t.toUpperCase()}] VLAN Status: ${db.edge[t].vlan}, Private VLAN: ${db.edge[t].pvlan}`, 'terminal-sys');
+        closeModal('edge-modal');
+        evaluate();
+    }
+
+    function saveIoT() {
+        let t = document.getElementById('iot-target').value;
+        db.iot[t].logic = document.getElementById('cfg-iot-logic').value;
+        db.iot[t].defense = document.getElementById('cfg-iot-defense').value;
+        logTerminal(`[IoT NODE ${t.toUpperCase()}] Smart Logic: ${db.iot[t].logic}, Storm Control: ${db.iot[t].defense}`, 'terminal-sys');
+        closeModal('iot-modal');
+        evaluate();
+    }
+
+    function toggleCoreLink() {
+        db.sim.linkNorthCut = !db.sim.linkNorthCut;
+        let btn = document.getElementById('btn-cut-link');
+        if(db.sim.linkNorthCut) {
+            btn.innerHTML = '<i class="fa-solid fa-plug"></i> Sambungkan Kabel Core North';
+            btn.className = 'btn-cisco';
+            logTerminal('[FAILOVER TEST] KABEL UTAMA CORE ROUTER NORTH DIPUTUS!', 'terminal-fail');
+        } else {
+            btn.innerHTML = '<i class="fa-solid fa-scissors"></i> Putus Kabel Core North';
+            btn.className = 'btn-danger';
+            logTerminal('[FAILOVER TEST] Kabel Core Router North disambungkan kembali.', 'terminal-warn');
+        }
+        evaluate();
+    }
+
+    function triggerDDoSAttack() {
+        db.sim.ddosActive = true;
+        logTerminal('\n[ALERT] ATTACK GENERATOR: Simulasi Botnet DDoS diaktifkan dari Kamera CCTV terkompromi!', 'terminal-fail');
+        
+        let defenseActive = (db.iot.iot1.defense === 'enabled' || db.iot.iot4.defense === 'enabled');
+        
+        setTimeout(() => {
+            if(defenseActive) {
+                logTerminal('[CYBER DEFENSE] Traffic Flood terdeteksi > 10.000 pps!', 'terminal-warn');
+                logTerminal('[CYBER DEFENSE] Rate-Limiting & Storm Control aktif pada Access Switch. Port botnet di-block dalam 1.2 detik! Skenario aman.', 'terminal-success');
+            } else {
+                logTerminal('[SECURITY BREACH] Storm Control NONAKTIF! High Broadcast Traffic melumpuhkan Gateway Edge Server!', 'terminal-fail');
+                logTerminal('[SECURITY BREACH] Server CPU Usage 100%. Latensi > 4500ms.', 'terminal-fail');
+            }
+            evaluate();
+        }, 600);
+    }
+
+    function evaluate() {
+        let score = 0;
+
+        // Modul 1: Metro Ethernet & Core Ring Infrastructure (20 Poin)
+        let ringOk = (db.r.north.proto === 'ospf_fast' && db.r.south.proto === 'ospf_fast' && db.r.north.subnet === 'valid' && db.r.south.subnet === 'valid');
+        updateChecklist('ring', ringOk);
+        if(ringOk) score += 20;
+
+        // Modul 2: IoT Device Provisioning & Conditional Logic (20 Poin)
+        let logicOk = (db.iot.iot1.logic === 'enabled' && db.iot.iot2.logic === 'enabled');
+        updateChecklist('logic', logicOk);
+        if(logicOk) score += 20;
+
+        // Modul 3: Network Segmentation & PVLAN (20 Poin)
+        let pvlanOk = (db.edge.dist1.vlan === 'vlan_ok' && db.edge.dist3.pvlan === 'isolated');
+        updateChecklist('pvlan', pvlanOk);
+        if(pvlanOk) score += 20;
+
+        // Modul 4: Edge-to-Cloud IPsec GRE Tunnel & ASA FW (20 Poin)
+        let asaOk = (db.asa.tunnel === 'enabled' && db.asa.fw === 'strict');
+        updateChecklist('asa', asaOk);
+        if(asaOk) score += 20;
+
+        // Modul 5: Cyber Defense & Disaster Recovery Failover (20 Poin)
+        let defenseOk = (db.iot.iot1.defense === 'enabled' || db.iot.iot4.defense === 'enabled');
+        let failoverPass = ringOk && (!db.sim.linkNorthCut || (db.sim.linkNorthCut && db.r.south.proto === 'ospf_fast'));
+        let cyberOk = defenseOk && failoverPass;
+        updateChecklist('cyber', cyberOk);
+        if(cyberOk) score += 20;
+
+        // Update UI Text & Nodes
+        document.getElementById('lbl-asa').innerText = db.asa.fw === 'strict' ? "Stateful Strict" : "Default";
+        document.getElementById('lbl-r-north').innerText = db.sim.linkNorthCut ? "LINK DISCONNECTED" : (db.r.north.proto === 'ospf_fast' ? "REP/OSPF Ring" : "Disabled");
+        document.getElementById('lbl-r-south').innerText = db.r.south.proto === 'ospf_fast' ? "REP/OSPF Ring" : "Disabled";
+
+        document.getElementById('lbl-dist1').innerText = db.edge.dist1.vlan === 'vlan_ok' ? "VLANs Configured" : "VLAN 1 Default";
+        document.getElementById('lbl-dist3').innerText = db.edge.dist3.pvlan === 'isolated' ? "PVLAN Isolated" : "PVLAN Off";
+
+        document.getElementById('lbl-iot1').innerText = db.iot.iot1.logic === 'enabled' ? "Smart Logic ON" : "Logic: Off";
+        document.getElementById('lbl-iot4').innerText = db.iot.iot4.defense === 'enabled' ? "Storm Control ON" : "Defense: Off";
+
+        updateNode('asa', asaOk);
+        updateNode('r-north', db.r.north.proto === 'ospf_fast' && !db.sim.linkNorthCut);
+        updateNode('r-south', db.r.south.proto === 'ospf_fast');
+        updateNode('dist1', db.edge.dist1.vlan === 'vlan_ok');
+        updateNode('dist2', db.edge.dist2.vlan === 'vlan_ok');
+        updateNode('dist3', db.edge.dist3.pvlan === 'isolated');
+        updateNode('dist4', db.edge.dist4.vlan === 'vlan_ok');
+        updateNode('iot1', db.iot.iot1.logic === 'enabled');
+        updateNode('iot2', db.iot.iot2.logic === 'enabled');
+        updateNode('iot3', db.edge.dist3.pvlan === 'isolated');
+        updateNode('iot4', db.iot.iot4.defense === 'enabled');
+
+        document.getElementById('total-score').innerText = `${score} / 100`;
+        renderSVG(ringOk, db.asa.tunnel === 'enabled');
+    }
+
+    function getLineHtml(id1, id2, statusClass) {
+        const e1 = document.getElementById(id1).getBoundingClientRect();
+        const e2 = document.getElementById(id2).getBoundingClientRect();
+        const cvs = document.getElementById('canvas-area').getBoundingClientRect();
+        const x1 = e1.left - cvs.left + e1.width/2, y1 = e1.top - cvs.top + e1.height/2;
+        const x2 = e2.left - cvs.left + e2.width/2, y2 = e2.top - cvs.top + e2.height/2;
+        return `<line class="wired-line ${statusClass}" x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" />`;
+    }
+
+    function renderSVG(ringOk, encryptedTunnel) {
+        let svg = '';
+        
+        // Cloud -> ASA
+        svg += getLineHtml('cloud-node', 'asa-node', encryptedTunnel ? 'encrypted' : 'active');
+        
+        // ASA -> Core Routers
+        let northLink = db.sim.linkNorthCut ? 'offline' : (ringOk ? 'ring' : 'active');
+        let southLink = ringOk ? 'ring' : 'active';
+        
+        svg += getLineHtml('asa-node', 'r-north-node', northLink);
+        svg += getLineHtml('asa-node', 'r-south-node', southLink);
+        
+        // Core Ring (North <-> South)
+        svg += getLineHtml('r-north-node', 'r-south-node', (ringOk && !db.sim.linkNorthCut) ? 'ring' : 'offline');
+        
+        // Core -> Distribution
+        svg += getLineHtml('r-north-node', 'dist1-node', northLink);
+        svg += getLineHtml('r-north-node', 'dist2-node', northLink);
+        svg += getLineHtml('r-south-node', 'dist3-node', southLink);
+        svg += getLineHtml('r-south-node', 'dist4-node', southLink);
+
+        // Distribution Interconnect Ring
+        svg += getLineHtml('dist1-node', 'dist2-node', ringOk ? 'ring' : 'active');
+        svg += getLineHtml('dist2-node', 'dist3-node', ringOk ? 'ring' : 'active');
+        svg += getLineHtml('dist3-node', 'dist4-node', ringOk ? 'ring' : 'active');
+        
+        // Distribution -> IoT End Devices
+        svg += getLineHtml('dist1-node', 'iot1-node', db.iot.iot1.logic === 'enabled' ? 'active' : '');
+        svg += getLineHtml('dist2-node', 'iot2-node', db.iot.iot2.logic === 'enabled' ? 'active' : '');
+        svg += getLineHtml('dist3-node', 'iot3-node', db.edge.dist3.pvlan === 'isolated' ? 'encrypted' : '');
+        svg += getLineHtml('dist4-node', 'iot4-node', db.iot.iot4.defense === 'enabled' ? 'active' : '');
+
+        document.getElementById('svg-connections').innerHTML = svg;
+    }
+
+    function runSmartCityAudit() {
+        logTerminal('\n> MENJALANKAN AUDIT KEAMANAN DAN TELEMETRI SMART CITY...', 'terminal-sys');
+        
+        setTimeout(() => {
+            if(db.asa.tunnel === 'enabled') {
+                logTerminal('[AUDIT OK] IPsec GRE Tunnel terenkripsi 256-bit AES. Log IoT Edge aman dari penyadapan.', 'terminal-success');
+            } else {
+                logTerminal('[AUDIT WARN] Data Edge-to-Cloud dikirim tanpa enkripsi (Plaintext Packet Detected)!', 'terminal-fail');
+            }
+
+            if(db.edge.dist3.pvlan === 'isolated') {
+                logTerminal('[AUDIT OK] Private VLAN Active. Sensor Smart Lighting berhasil diisolasi dari Lateral Scanning.', 'terminal-success');
+            } else {
+                logTerminal('[AUDIT RISK] PVLAN Off! Sensor terancam pivoting peretasan antar-device.', 'terminal-fail');
+            }
+
+            if(db.sim.linkNorthCut && db.r.south.proto === 'ospf_fast') {
+                logTerminal('[AUDIT OK] Link Failover Teruji! OSPF/REP mengalihkan lalu lintas via Core South (Uptime 99.99%).', 'terminal-success');
+            }
+        }, 500);
+    }
+
+    function updateChecklist(key, isDone) {
+        let el = document.getElementById(`chk-${key}`);
+        let ic = document.getElementById(`icon-${key}`);
+        if(isDone) {
+            el.classList.add('completed'); ic.className = 'fa-solid fa-circle-check';
+        } else {
+            el.classList.remove('completed'); ic.className = 'fa-regular fa-circle-check';
+        }
+    }
+
+    function updateNode(nodePre, isOk) {
+        let node = document.getElementById(`${nodePre}-node`);
+        let badge = document.getElementById(`${nodePre}-badge`);
+        if(isOk) {
+            node.classList.add('configured');
+            badge.className = 'status-badge online';
+            badge.innerHTML = '<i class="fa-solid fa-check"></i>';
+        } else {
+            node.classList.remove('configured');
+            badge.className = 'status-badge';
+            badge.innerHTML = '!';
+        }
+    }
+
+    function resetAllConfigs() {
+        db = {
+            asa: { tunnel: 'disabled', fw: 'permit_all' },
+            r: { 
+                north: { proto: 'none', subnet: 'invalid', power: true },
+                south: { proto: 'none', subnet: 'invalid', power: true }
+            },
+            edge: {
+                dist1: { vlan: 'vlan1', pvlan: 'disabled' },
+                dist2: { vlan: 'vlan1', pvlan: 'disabled' },
+                dist3: { vlan: 'vlan1', pvlan: 'disabled' },
+                dist4: { vlan: 'vlan1', pvlan: 'disabled' }
+            },
+            iot: {
+                iot1: { logic: 'disabled', defense: 'disabled' },
+                iot2: { logic: 'disabled', defense: 'disabled' },
+                iot3: { logic: 'disabled', defense: 'disabled' },
+                iot4: { logic: 'disabled', defense: 'disabled' }
+            },
+            sim: { ddosActive: false, linkNorthCut: false }
+        };
+        let btn = document.getElementById('btn-cut-link');
+        btn.innerHTML = '<i class="fa-solid fa-scissors"></i> Putus Kabel Core North';
+        btn.className = 'btn-danger';
+        logTerminal('[SYSTEM] Inisialisasi ulang simulasi Smart City Topology.', 'terminal-warn');
+        evaluate();
+    }
+
+    let resizeTimer;
+    window.addEventListener('resize', () => {
+        clearTimeout(resizeTimer);
+        resizeTimer = setTimeout(() => evaluate(), 100);
+    });
+    
+    setTimeout(() => {
+        logTerminal('[SYSTEM] Menghubungkan 34 Perangkat Smart City Infrastructure...', 'terminal-sys');
+        logTerminal('[SYSTEM] Menunggu konfigurasi Ring, Logic IoT, PVLAN, & ASA Firewall.', 'terminal-warn');
+        evaluate();
+    }, 400);
+</script>
+</body>
+</html>
